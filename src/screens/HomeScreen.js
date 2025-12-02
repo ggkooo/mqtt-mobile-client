@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   Modal,
   Pressable,
   Animated,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -24,8 +25,11 @@ const HomeScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [mqttConnected, setMqttConnected] = useState(false);
   const [numColumns, setNumColumns] = useState(1);
-  const [logoError, setLogoError] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [searchText, setSearchText] = useState('');
+  const [sortOrder, setSortOrder] = useState('addition'); // 'addition', 'name', 'alphabetic', 'type'
+  const [showSortModal, setShowSortModal] = useState(false);
+  const [isReversed, setIsReversed] = useState(false);
   const rotationAnim = useRef(new Animated.Value(0)).current;
 
   useFocusEffect(
@@ -38,13 +42,10 @@ const HomeScreen = ({ navigation }) => {
 
   const loadActions = async () => {
     try {
-      setLoading(true);
       const savedActions = await StorageService.loadActions();
       setActions(savedActions);
     } catch (error) {
       Alert.alert('Erro', 'Falha ao carregar ações salvas');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -100,6 +101,113 @@ const HomeScreen = ({ navigation }) => {
     setMqttConnected(MQTTService.isConnected);
   };
 
+  // Callback para monitorar mudanças de status da conexão
+  const handleConnectionStatusChange = useCallback(() => {
+    setMqttConnected(MQTTService.isConnected);
+  }, []);
+
+  // Configurar monitoramento de conexão
+  useEffect(() => {
+    // Verificar status inicial
+    checkMQTTConnection();
+
+    // Configurar callback para mudanças de status
+    MQTTService.addMessageCallback((topic, message) => {
+      console.log('Mensagem recebida:', topic, message);
+      // Aqui você pode processar mensagens recebidas se necessário
+    });
+
+    // Verificar status periodicamente
+    const connectionCheckInterval = setInterval(() => {
+      const wasConnected = mqttConnected;
+      const isCurrentlyConnected = MQTTService.isConnected;
+
+      if (wasConnected !== isCurrentlyConnected) {
+        setMqttConnected(isCurrentlyConnected);
+
+        if (!isCurrentlyConnected && wasConnected) {
+          console.log('Conexão MQTT perdida - atualizando interface');
+        } else if (isCurrentlyConnected && !wasConnected) {
+          console.log('Conexão MQTT restabelecida - atualizando interface');
+        }
+      }
+    }, 2000); // Verificar a cada 2 segundos
+
+    return () => {
+      clearInterval(connectionCheckInterval);
+    };
+  }, [mqttConnected]);
+
+  // Filtrar e ordenar ações
+  const filteredAndSortedActions = useMemo(() => {
+    let filtered = actions.filter(action =>
+      (action.name || '').toLowerCase().includes(searchText.toLowerCase()) ||
+      (action.topic || '').toLowerCase().includes(searchText.toLowerCase())
+    );
+
+    filtered.sort((a, b) => {
+      let result = 0;
+
+      switch (sortOrder) {
+        case 'addition':
+          // Ordem de adição (mais recentes primeiro, baseado no índice original)
+          const indexA = actions.findIndex(action => action.id === a.id);
+          const indexB = actions.findIndex(action => action.id === b.id);
+          result = indexB - indexA;
+          break;
+        case 'alphabetic':
+          // Ordem alfabética por nome
+          const nameA = (a.name || '').toLowerCase();
+          const nameB = (b.name || '').toLowerCase();
+          result = nameA.localeCompare(nameB);
+          break;
+        case 'type':
+          // Ordem por tipo
+          const typeA = (a.type || '').toLowerCase();
+          const typeB = (b.type || '').toLowerCase();
+          if (typeA === typeB) {
+            // Se o tipo for igual, ordenar por nome
+            const nameA = (a.name || '').toLowerCase();
+            const nameB = (b.name || '').toLowerCase();
+            result = nameA.localeCompare(nameB);
+          } else {
+            result = typeA.localeCompare(typeB);
+          }
+          break;
+        default:
+          result = 0;
+      }
+
+      // Aplicar reversão se necessário
+      return isReversed ? -result : result;
+    });
+
+    return filtered;
+  }, [actions, searchText, sortOrder, isReversed]);
+
+  const getSortOptionLabel = (option) => {
+    switch (option) {
+      case 'addition':
+        return 'Ordem de Adição';
+      case 'alphabetic':
+        return 'Ordem Alfabética (A-Z)';
+      case 'type':
+        return 'Por Tipo';
+      default:
+        return 'Ordem de Adição';
+    }
+  };
+
+  const toggleReverse = () => {
+    setIsReversed(!isReversed);
+  };
+
+  // Verificar se há algum filtro ativo (busca ou ordenação diferente do padrão)
+  const hasActiveFilter = searchText.length > 0 || sortOrder !== 'addition';
+
+  // O botão de inversão sempre pode ser usado
+  const canReverse = true;
+
   const handleAddAction = () => {
     navigation.navigate('AddAction');
   };
@@ -145,35 +253,68 @@ const HomeScreen = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        {!logoError ? (
-          <Image
-            source={require('../../assets/logo.jpg')}
-            style={styles.logo}
-            resizeMode="contain"
-            onError={() => setLogoError(true)}
-          />
-        ) : (
-          <Text style={styles.headerTitle}>Controle IoT</Text>
-        )}
+        <View style={styles.searchContainer}>
+          <View style={styles.searchInputContainer}>
+            <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Buscar ações..."
+              value={searchText}
+              onChangeText={setSearchText}
+              placeholderTextColor="#999"
+            />
+            {searchText.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchText('')} style={styles.clearButton}>
+                <Ionicons name="close-circle" size={20} color="#666" />
+              </TouchableOpacity>
+            )}
+          </View>
+          <View style={styles.filterButtons}>
+            <TouchableOpacity
+              style={styles.sortButton}
+              onPress={() => setShowSortModal(true)}
+            >
+              <Ionicons name="funnel-outline" size={22} color="#666" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.reverseButton,
+                isReversed && styles.reverseButtonActive
+              ]}
+              onPress={toggleReverse}
+            >
+              <Ionicons
+                name={isReversed ? "arrow-down" : "arrow-up"}
+                size={20}
+                color={isReversed ? "#007AFF" : "#666"}
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
 
       {/* Lista de ações */}
       <FlatList
-        data={actions}
+        data={filteredAndSortedActions}
         renderItem={renderAction}
         keyExtractor={(item) => item.id}
         numColumns={numColumns}
         key={numColumns} // Force re-render when columns change
         contentContainerStyle={[
           numColumns > 1 ? styles.listContainerMultiColumn : styles.listContainer,
-          actions.length === 0 && styles.emptyListContainer
+          filteredAndSortedActions.length === 0 && styles.emptyListContainer
         ]}
         refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={loadActions} />
+          <RefreshControl refreshing={loading} onRefresh={() => {
+            setLoading(true);
+            loadActions().finally(() => setLoading(false));
+          }} />
         }
         ListEmptyComponent={renderEmptyState}
         showsVerticalScrollIndicator={false}
         columnWrapperStyle={numColumns > 1 ? styles.row : null}
+        removeClippedSubviews={false}
+        initialNumToRender={10}
       />
 
       {/* Botão de menu flutuante */}
@@ -194,6 +335,86 @@ const HomeScreen = ({ navigation }) => {
           <Ionicons name="menu" size={28} color="#fff" />
         </Animated.View>
       </TouchableOpacity>
+
+      {/* Modal de Ordenação */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showSortModal}
+        onRequestClose={() => setShowSortModal(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowSortModal(false)}
+        >
+          <View style={styles.sortModalContainer}>
+            <Text style={styles.sortModalTitle}>Ordenar por:</Text>
+
+            <TouchableOpacity
+              style={[
+                styles.sortOption,
+                sortOrder === 'addition' && styles.sortOptionSelected
+              ]}
+              onPress={() => {
+                setSortOrder('addition');
+                setShowSortModal(false);
+              }}
+            >
+              <Text style={[
+                styles.sortOptionText,
+                sortOrder === 'addition' && styles.sortOptionTextSelected
+              ]}>
+                Ordem de Adição
+              </Text>
+              {sortOrder === 'addition' && (
+                <Ionicons name="checkmark" size={20} color="#007AFF" />
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.sortOption,
+                sortOrder === 'alphabetic' && styles.sortOptionSelected
+              ]}
+              onPress={() => {
+                setSortOrder('alphabetic');
+                setShowSortModal(false);
+              }}
+            >
+              <Text style={[
+                styles.sortOptionText,
+                sortOrder === 'alphabetic' && styles.sortOptionTextSelected
+              ]}>
+                Ordem Alfabética (A-Z)
+              </Text>
+              {sortOrder === 'alphabetic' && (
+                <Ionicons name="checkmark" size={20} color="#007AFF" />
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.sortOption,
+                sortOrder === 'type' && styles.sortOptionSelected
+              ]}
+              onPress={() => {
+                setSortOrder('type');
+                setShowSortModal(false);
+              }}
+            >
+              <Text style={[
+                styles.sortOptionText,
+                sortOrder === 'type' && styles.sortOptionTextSelected
+              ]}>
+                Por Tipo
+              </Text>
+              {sortOrder === 'type' && (
+                <Ionicons name="checkmark" size={20} color="#007AFF" />
+              )}
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
 
       {/* Menu Modal */}
       <Modal
@@ -284,14 +505,98 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  searchInputContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 40,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#333',
+    height: 40,
+  },
+  clearButton: {
+    marginLeft: 8,
+  },
+  filterButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  sortButton: {
+    padding: 8,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+  },
+  reverseButton: {
+    padding: 8,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    minWidth: 36,
+    alignItems: 'center',
+  },
+  reverseButtonActive: {
+    backgroundColor: '#e3f2fd',
+    borderWidth: 1,
+    borderColor: '#007AFF',
+  },
+  sortModalContainer: {
+    position: 'absolute',
+    top: 80,
+    right: 20,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingVertical: 8,
+    minWidth: 200,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  sortModalTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  sortOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  sortOptionSelected: {
+    backgroundColor: '#f0f8ff',
+  },
+  sortOptionText: {
+    fontSize: 14,
     color: '#333',
   },
-  logo: {
-    height: 75,
-    width: 75,
+  sortOptionTextSelected: {
+    color: '#007AFF',
+    fontWeight: '500',
   },
   headerActions: {
     flexDirection: 'row',
@@ -356,10 +661,14 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
   },
   listContainer: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    paddingTop: 8,
   },
   listContainerMultiColumn: {
-    padding: 12,
+    paddingHorizontal: 12,
+    paddingBottom: 12,
+    paddingTop: 4,
   },
   emptyListContainer: {
     flex: 1,
