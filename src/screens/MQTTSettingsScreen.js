@@ -74,6 +74,21 @@ const MQTTSettingsScreen = ({ navigation }) => {
       Alert.alert('Erro', 'Porta deve ser um número entre 1 e 65535');
       return false;
     }
+
+    // Avisar sobre portas comuns que não são WebSocket
+    const port = parseInt(config.brokerPort);
+    if (port === 1883) {
+      Alert.alert(
+        'Aviso sobre Porta',
+        'A porta 1883 é para MQTT TCP, não WebSocket. Para React Native/Expo, use portas WebSocket como:\n\n• 8080 (comum para WebSocket MQTT)\n• 8000 (HiveMQ público)\n• 9001 (Mosquitto WebSocket padrão)\n• 8083 (MQTT over WebSocket seguro)\n\nContinuar mesmo assim?',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Continuar', style: 'default' }
+        ]
+      );
+      return false;
+    }
+
     if (config.useAuth && (!config.username.trim() || !config.password.trim())) {
       Alert.alert('Erro', 'Usuário e senha são obrigatórios quando autenticação está ativa');
       return false;
@@ -123,13 +138,14 @@ const MQTTSettingsScreen = ({ navigation }) => {
     }
 
     try {
-      const testTopic = 'test/connection';
-      const testMessage = 'Teste de conexão - ' + new Date().toISOString();
-
-      await MQTTService.publish(testTopic, testMessage);
-      Alert.alert('Sucesso', 'Mensagem de teste enviada com sucesso!');
+      const testMessage = await MQTTService.testConnection();
+      Alert.alert(
+        'Teste Bem-sucedido!',
+        `Mensagem de teste enviada com sucesso!\n\nTópico: test/mobile_app\nMensagem: ${testMessage}`,
+        [{ text: 'OK' }]
+      );
     } catch (error) {
-      Alert.alert('Erro', `Falha no teste: ${error.message}`);
+      Alert.alert('Erro no Teste', `Falha no teste: ${error.message}`);
     }
   };
 
@@ -274,13 +290,28 @@ const MQTTSettingsScreen = ({ navigation }) => {
           <View style={styles.infoSection}>
             <Text style={styles.infoTitle}>Dicas de Configuração</Text>
             <Text style={styles.infoText}>
-              • Use um broker público como broker.hivemq.com para testes
+              🔌 <Text style={{fontWeight: 'bold'}}>Para seu broker (broker.giordanoberwig.xyz):</Text>
             </Text>
             <Text style={styles.infoText}>
-              • A porta padrão para WebSocket é 8080
+              • Use porta 8080, 9001 ou 8083 para WebSocket MQTT
             </Text>
             <Text style={styles.infoText}>
-              • Client ID único evita conflitos entre dispositivos
+              • Porta 1883 é apenas para TCP (não funciona no React Native)
+            </Text>
+            <Text style={styles.infoText}>
+              • Configure WebSocket no Mosquitto: listener 9001, protocol websockets
+            </Text>
+            <Text style={styles.infoText}>
+              📡 <Text style={{fontWeight: 'bold'}}>Brokers públicos para teste:</Text>
+            </Text>
+            <Text style={styles.infoText}>
+              • broker.hivemq.com:8000 (sempre funciona)
+            </Text>
+            <Text style={styles.infoText}>
+              • test.mosquitto.org:8080 (backup)
+            </Text>
+            <Text style={styles.infoText}>
+              💡 <Text style={{fontWeight: 'bold'}}>Agora com conexão real!</Text> Mensagens aparecerão em clientes MQTT externos
             </Text>
           </View>
         </View>
