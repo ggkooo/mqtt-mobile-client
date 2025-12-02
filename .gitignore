@@ -39,3 +39,26 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test files and documentation (cleanup)
+*test*.js
+*debug*.js
+*diagnostic*.js
+*DIAGNÓSTICO*.md
+*TESTE*.md
+*DEBUG*.md
+*CONEXAO*.md
+*NOVA_FUNCIONALIDADE*.md
+*CORREÇÃO*.md
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
