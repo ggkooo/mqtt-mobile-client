@@ -25,6 +25,7 @@ const MQTTSettingsScreen = ({ navigation }) => {
     username: '',
     password: '',
     useAuth: false,
+    protocol: 'ws', // Novo campo para protocolo
   });
 
   const [connecting, setConnecting] = useState(false);
@@ -112,7 +113,10 @@ const MQTTSettingsScreen = ({ navigation }) => {
         parseInt(config.brokerPort),
         config.clientId || null,
         config.useAuth ? config.username : null,
-        config.useAuth ? config.password : null
+        config.useAuth ? config.password : null,
+        {
+          forceProtocol: config.protocol // Força o protocolo selecionado pelo usuário
+        }
       );
 
       setIsConnected(true);
@@ -138,10 +142,10 @@ const MQTTSettingsScreen = ({ navigation }) => {
     }
 
     try {
-      const testMessage = await MQTTService.testConnection();
+      await MQTTService.testConnection();
       Alert.alert(
         'Teste Bem-sucedido!',
-        `Mensagem de teste enviada com sucesso!\n\nTópico: test/mobile_app\nMensagem: ${testMessage}`,
+        'Mensagem de teste enviada com sucesso para o broker MQTT!',
         [{ text: 'OK' }]
       );
     } catch (error) {
@@ -197,6 +201,68 @@ const MQTTSettingsScreen = ({ navigation }) => {
                 placeholderTextColor="#999"
                 keyboardType="numeric"
               />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Protocolo WebSocket *</Text>
+              <View style={styles.protocolContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.protocolButton,
+                    config.protocol === 'ws' && styles.protocolButtonActive
+                  ]}
+                  onPress={() => handleInputChange('protocol', 'ws')}
+                >
+                  <Text style={[
+                    styles.protocolButtonText,
+                    config.protocol === 'ws' && styles.protocolButtonTextActive
+                  ]}>
+                    ws://
+                  </Text>
+                  <Text style={[
+                    styles.protocolDescription,
+                    config.protocol === 'ws' && styles.protocolDescriptionActive
+                  ]}>
+                    Não seguro
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.protocolButton,
+                    config.protocol === 'wss' && styles.protocolButtonActive
+                  ]}
+                  onPress={() => handleInputChange('protocol', 'wss')}
+                >
+                  <Text style={[
+                    styles.protocolButtonText,
+                    config.protocol === 'wss' && styles.protocolButtonTextActive
+                  ]}>
+                    wss://
+                  </Text>
+                  <Text style={[
+                    styles.protocolDescription,
+                    config.protocol === 'wss' && styles.protocolDescriptionActive
+                  ]}>
+                    Seguro (SSL)
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.protocolInfo}>
+                <Ionicons
+                  name="information-circle-outline"
+                  size={16}
+                  color="#666"
+                  style={{ marginRight: 5 }}
+                />
+                <Text style={styles.protocolInfoText}>
+                  {config.protocol === 'ws'
+                    ? 'Conexão não criptografada. Use para desenvolvimento local.'
+                    : 'Conexão criptografada com SSL/TLS. Recomendado para produção.'
+                  }
+                </Text>
+              </View>
             </View>
 
             <View style={styles.inputGroup}>
@@ -288,30 +354,15 @@ const MQTTSettingsScreen = ({ navigation }) => {
 
           {/* Informações */}
           <View style={styles.infoSection}>
-            <Text style={styles.infoTitle}>Dicas de Configuração</Text>
+            <Text style={styles.infoTitle}>Configuração do Protocolo</Text>
             <Text style={styles.infoText}>
-              🔌 <Text style={{fontWeight: 'bold'}}>Para seu broker (broker.giordanoberwig.xyz):</Text>
+              <Text style={{fontWeight: 'bold'}}>ws://</Text> - Conexão não criptografada para desenvolvimento
             </Text>
             <Text style={styles.infoText}>
-              • Use porta 8080, 9001 ou 8083 para WebSocket MQTT
+              <Text style={{fontWeight: 'bold'}}>wss://</Text> - Conexão segura com SSL/TLS para produção
             </Text>
             <Text style={styles.infoText}>
-              • Porta 1883 é apenas para TCP (não funciona no React Native)
-            </Text>
-            <Text style={styles.infoText}>
-              • Configure WebSocket no Mosquitto: listener 9001, protocol websockets
-            </Text>
-            <Text style={styles.infoText}>
-              📡 <Text style={{fontWeight: 'bold'}}>Brokers públicos para teste:</Text>
-            </Text>
-            <Text style={styles.infoText}>
-              • broker.hivemq.com:8000 (sempre funciona)
-            </Text>
-            <Text style={styles.infoText}>
-              • test.mosquitto.org:8080 (backup)
-            </Text>
-            <Text style={styles.infoText}>
-              💡 <Text style={{fontWeight: 'bold'}}>Agora com conexão real!</Text> Mensagens aparecerão em clientes MQTT externos
+              💡 Escolha o protocolo adequado para seu ambiente e broker MQTT
             </Text>
           </View>
         </View>
@@ -469,6 +520,54 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 5,
     lineHeight: 20,
+  },
+  protocolContainer: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 10,
+  },
+  protocolButton: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
+    backgroundColor: '#f9f9f9',
+  },
+  protocolButtonActive: {
+    borderColor: '#2196F3',
+    backgroundColor: '#e3f2fd',
+  },
+  protocolButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 2,
+  },
+  protocolButtonTextActive: {
+    color: '#2196F3',
+  },
+  protocolDescription: {
+    fontSize: 12,
+    color: '#999',
+  },
+  protocolDescriptionActive: {
+    color: '#2196F3',
+  },
+  protocolInfo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#f0f8ff',
+    padding: 10,
+    borderRadius: 6,
+    marginTop: 5,
+  },
+  protocolInfoText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#666',
+    lineHeight: 16,
   },
 });
 
