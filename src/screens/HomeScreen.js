@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Alert,
   RefreshControl,
-  Image,
   Modal,
   Pressable,
   Animated,
@@ -19,11 +18,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import ActionCard from '../components/ActionCard';
 import StorageService from '../services/StorageService';
 import MQTTService from '../services/MQTTService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const MQTT_CONFIG_KEY = 'mqtt_config';
 
 const HomeScreen = ({ navigation }) => {
   const [actions, setActions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [mqttConnected, setMqttConnected] = useState(false);
+  const [mqttConnecting, setMqttConnecting] = useState(false); // Novo estado para conexão
+  const [autoConnectAttempted, setAutoConnectAttempted] = useState(false); // Controla se já tentou conectar
   const [numColumns, setNumColumns] = useState(1);
   const [showMenu, setShowMenu] = useState(false);
   const [searchText, setSearchText] = useState('');
@@ -37,7 +41,13 @@ const HomeScreen = ({ navigation }) => {
       loadActions();
       loadLayoutPreference();
       checkMQTTConnection();
-    }, [])
+
+      // Tentativa de conexão automática apenas na primeira vez
+      if (!autoConnectAttempted) {
+        attemptAutoConnect();
+        setAutoConnectAttempted(true);
+      }
+    }, [autoConnectAttempted])
   );
 
   const loadActions = async () => {
@@ -101,23 +111,53 @@ const HomeScreen = ({ navigation }) => {
     setMqttConnected(MQTTService.isConnected);
   };
 
-  // Callback para monitorar mudanças de status da conexão
-  const handleConnectionStatusChange = useCallback(() => {
-    setMqttConnected(MQTTService.isConnected);
-  }, []);
+  const attemptAutoConnect = async () => {
+    try {
+      setMqttConnecting(true);
 
-  // Configurar monitoramento de conexão
+      if (MQTTService.isConnected) {
+        setMqttConnecting(false);
+        return;
+      }
+
+      const savedConfig = await AsyncStorage.getItem(MQTT_CONFIG_KEY);
+      if (!savedConfig) {
+        setMqttConnecting(false);
+        return;
+      }
+
+      const config = JSON.parse(savedConfig);
+
+      if (!config.brokerHost || !config.brokerPort) {
+        setMqttConnecting(false);
+        return;
+      }
+
+      await MQTTService.connect(
+        config.brokerHost,
+        parseInt(config.brokerPort),
+        config.clientId || null,
+        config.useAuth ? config.username : null,
+        config.useAuth ? config.password : null,
+        {
+          forceProtocol: config.protocol
+        }
+      );
+
+      setMqttConnected(true);
+
+    } catch (error) {
+      console.log(`Falha na conexão automática MQTT: ${error.message}`);
+    } finally {
+      setMqttConnecting(false);
+    }
+  };
+
+  // ...existing code...
+
   useEffect(() => {
-    // Verificar status inicial
     checkMQTTConnection();
 
-    // Configurar callback para mudanças de status
-    MQTTService.addMessageCallback((topic, message) => {
-      console.log('Mensagem recebida:', topic, message);
-      // Aqui você pode processar mensagens recebidas se necessário
-    });
-
-    // Verificar status periodicamente
     const connectionCheckInterval = setInterval(() => {
       const wasConnected = mqttConnected;
       const isCurrentlyConnected = MQTTService.isConnected;
@@ -126,19 +166,25 @@ const HomeScreen = ({ navigation }) => {
         setMqttConnected(isCurrentlyConnected);
 
         if (!isCurrentlyConnected && wasConnected) {
-          console.log('Conexão MQTT perdida - atualizando interface');
+          setMqttConnecting(false);
+
+          setTimeout(() => {
+            if (!MQTTService.isConnected && autoConnectAttempted) {
+              attemptReconnect();
+            }
+          }, 5000);
+
         } else if (isCurrentlyConnected && !wasConnected) {
-          console.log('Conexão MQTT restabelecida - atualizando interface');
+          setMqttConnecting(false);
         }
       }
-    }, 2000); // Verificar a cada 2 segundos
+    }, 3000);
 
     return () => {
       clearInterval(connectionCheckInterval);
     };
   }, [mqttConnected]);
 
-  // Filtrar e ordenar ações
   const filteredAndSortedActions = useMemo(() => {
     let filtered = actions.filter(action =>
       (action.name || '').toLowerCase().includes(searchText.toLowerCase()) ||
@@ -146,27 +192,23 @@ const HomeScreen = ({ navigation }) => {
     );
 
     filtered.sort((a, b) => {
-      let result = 0;
+      let result;
 
       switch (sortOrder) {
         case 'addition':
-          // Ordem de adição (mais recentes primeiro, baseado no índice original)
           const indexA = actions.findIndex(action => action.id === a.id);
           const indexB = actions.findIndex(action => action.id === b.id);
           result = indexB - indexA;
           break;
         case 'alphabetic':
-          // Ordem alfabética por nome
           const nameA = (a.name || '').toLowerCase();
           const nameB = (b.name || '').toLowerCase();
           result = nameA.localeCompare(nameB);
           break;
         case 'type':
-          // Ordem por tipo
           const typeA = (a.type || '').toLowerCase();
           const typeB = (b.type || '').toLowerCase();
           if (typeA === typeB) {
-            // Se o tipo for igual, ordenar por nome
             const nameA = (a.name || '').toLowerCase();
             const nameB = (b.name || '').toLowerCase();
             result = nameA.localeCompare(nameB);
@@ -178,35 +220,15 @@ const HomeScreen = ({ navigation }) => {
           result = 0;
       }
 
-      // Aplicar reversão se necessário
       return isReversed ? -result : result;
     });
 
     return filtered;
   }, [actions, searchText, sortOrder, isReversed]);
 
-  const getSortOptionLabel = (option) => {
-    switch (option) {
-      case 'addition':
-        return 'Ordem de Adição';
-      case 'alphabetic':
-        return 'Ordem Alfabética (A-Z)';
-      case 'type':
-        return 'Por Tipo';
-      default:
-        return 'Ordem de Adição';
-    }
-  };
-
   const toggleReverse = () => {
     setIsReversed(!isReversed);
   };
-
-  // Verificar se há algum filtro ativo (busca ou ordenação diferente do padrão)
-  const hasActiveFilter = searchText.length > 0 || sortOrder !== 'addition';
-
-  // O botão de inversão sempre pode ser usado
-  const canReverse = true;
 
   const handleAddAction = () => {
     navigation.navigate('AddAction');
@@ -230,6 +252,39 @@ const HomeScreen = ({ navigation }) => {
     navigation.navigate('MQTTSettings');
   };
 
+  const attemptReconnect = async () => {
+    try {
+      setMqttConnecting(true);
+
+      const savedConfig = await AsyncStorage.getItem(MQTT_CONFIG_KEY);
+      if (!savedConfig) {
+        setMqttConnecting(false);
+        return;
+      }
+
+      const config = JSON.parse(savedConfig);
+
+      await MQTTService.connect(
+        config.brokerHost,
+        parseInt(config.brokerPort),
+        config.clientId || null,
+        config.useAuth ? config.username : null,
+        config.useAuth ? config.password : null,
+        {
+          forceProtocol: config.protocol
+        }
+      );
+
+      setMqttConnected(true);
+
+    } catch (error) {
+      console.log(`Falha na reconexão automática: ${error.message}`);
+    } finally {
+      setMqttConnecting(false);
+    }
+  };
+
+
   const renderAction = ({ item }) => (
     <ActionCard
       action={item}
@@ -248,6 +303,70 @@ const HomeScreen = ({ navigation }) => {
       </Text>
     </View>
   );
+
+  // Componente de status de conexão MQTT
+  const renderMQTTStatus = () => {
+    if (mqttConnecting) {
+      return (
+        <View style={styles.mqttStatusContainer}>
+          <View style={styles.mqttStatusCard}>
+            <View style={styles.mqttStatusIcon}>
+              <Ionicons name="sync" size={24} color="#FF9800" />
+            </View>
+            <View style={styles.mqttStatusContent}>
+              <Text style={styles.mqttStatusTitle}>Conectando ao MQTT...</Text>
+              <Text style={styles.mqttStatusSubtitle}>
+                Estabelecendo conexão automática com o broker
+              </Text>
+            </View>
+          </View>
+        </View>
+      );
+    }
+
+    if (!mqttConnected) {
+      return (
+        <View style={styles.mqttStatusContainer}>
+          <TouchableOpacity
+            style={styles.mqttStatusCard}
+            onPress={connectToMQTT}
+            activeOpacity={0.8}
+          >
+            <View style={styles.mqttStatusIcon}>
+              <Ionicons name="cloud-offline-outline" size={24} color="#F44336" />
+            </View>
+            <View style={styles.mqttStatusContent}>
+              <Text style={styles.mqttStatusTitle}>MQTT Desconectado</Text>
+              <Text style={styles.mqttStatusSubtitle}>
+                Toque aqui para configurar a conexão com o broker
+              </Text>
+            </View>
+            <View style={styles.mqttStatusAction}>
+              <Ionicons name="chevron-forward" size={20} color="#666" />
+            </View>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    // Conectado - mostrar status discreto
+    return (
+      <View style={styles.mqttStatusContainer}>
+        <View style={styles.mqttStatusCardConnected}>
+          <View style={styles.mqttStatusIconConnected}>
+            <Ionicons name="cloud-done" size={20} color="#4CAF50" />
+          </View>
+          <Text style={styles.mqttStatusTitleConnected}>MQTT Conectado</Text>
+          <TouchableOpacity
+            onPress={connectToMQTT}
+            style={styles.mqttStatusSettings}
+          >
+            <Ionicons name="settings-outline" size={16} color="#666" />
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -292,6 +411,9 @@ const HomeScreen = ({ navigation }) => {
           </View>
         </View>
       </View>
+
+      {/* Status de Conexão MQTT */}
+      {renderMQTTStatus()}
 
       {/* Lista de ações */}
       <FlatList
@@ -694,6 +816,83 @@ const styles = StyleSheet.create({
   row: {
     justifyContent: 'space-between',
     paddingHorizontal: 4,
+  },
+  // Estilos para componente de status MQTT
+  mqttStatusContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+  },
+  mqttStatusCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 3,
+    borderLeftWidth: 4,
+    borderLeftColor: '#F44336',
+  },
+  mqttStatusCardConnected: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fff8',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e8f5e8',
+  },
+  mqttStatusIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#ffebee',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  mqttStatusIconConnected: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#e8f5e8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  mqttStatusContent: {
+    flex: 1,
+  },
+  mqttStatusTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 2,
+  },
+  mqttStatusTitleConnected: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#4CAF50',
+  },
+  mqttStatusSubtitle: {
+    fontSize: 13,
+    color: '#666',
+    lineHeight: 18,
+  },
+  mqttStatusAction: {
+    marginLeft: 8,
+  },
+  mqttStatusSettings: {
+    padding: 8,
+    borderRadius: 6,
+    backgroundColor: '#f5f5f5',
   },
 });
 
