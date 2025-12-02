@@ -1,18 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, Modal, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MQTTService from '../services/MQTTService';
 
 const ActionCard = ({ action, onEdit, onDelete, isMultiColumn = false }) => {
   const [showMenu, setShowMenu] = useState(false);
-  const executeAction = async () => {
+  const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
+  const menuButtonRef = useRef(null);
+
+  const executeAction = async (payload = null) => {
     try {
       if (!MQTTService.isConnected) {
         Alert.alert('Erro', 'Não conectado ao broker MQTT');
         return;
       }
 
-      await MQTTService.publish(action.topic, action.payload);
+      // Usa payload específico ou payload padrão da ação
+      const payloadToSend = payload || action.payload;
+
+      await MQTTService.publish(action.topic, payloadToSend);
       Alert.alert('Sucesso', `Ação "${action.name}" executada com sucesso!`);
     } catch (error) {
       Alert.alert('Erro', `Falha ao executar ação: ${error.message}`);
@@ -37,14 +43,30 @@ const ActionCard = ({ action, onEdit, onDelete, isMultiColumn = false }) => {
   };
 
   const toggleMenu = () => {
-    setShowMenu(!showMenu);
+    if (!showMenu) {
+      // Calcular posição do botão antes de mostrar o modal
+      if (menuButtonRef.current) {
+        menuButtonRef.current.measure((fx, fy, width, height, px, py) => {
+          setMenuPosition({
+            x: px - 120, // Posicionar o modal à esquerda do botão
+            y: py + height + 5, // Posicionar abaixo do botão com um pequeno espaçamento
+          });
+          setShowMenu(true);
+        });
+      }
+    } else {
+      setShowMenu(false);
+    }
   };
 
   return (
     <View style={[styles.container, isMultiColumn && styles.multiColumnContainer]}>
       <View style={styles.header}>
-        <View style={styles.iconContainer}>
-          <Ionicons name={action.icon || 'flash'} size={isMultiColumn ? 22 : 24} color="#4CAF50" />
+        <View style={[
+          styles.iconContainer,
+          { backgroundColor: `${action.iconColor || '#4CAF50'}20` }
+        ]}>
+          <Ionicons name={action.icon || 'flash'} size={isMultiColumn ? 22 : 24} color={action.iconColor || '#4CAF50'} />
         </View>
         <View style={styles.titleContainer}>
           <Text style={[styles.title, isMultiColumn && styles.multiColumnTitle]} numberOfLines={isMultiColumn ? 3 : 1}>
@@ -55,17 +77,40 @@ const ActionCard = ({ action, onEdit, onDelete, isMultiColumn = false }) => {
           </Text>
         </View>
         <View style={styles.actions}>
-          <TouchableOpacity style={styles.menuButton} onPress={toggleMenu}>
+          <TouchableOpacity
+            ref={menuButtonRef}
+            style={styles.menuButton}
+            onPress={toggleMenu}
+          >
             <Ionicons name="ellipsis-vertical" size={isMultiColumn ? 18 : 20} color="#666" />
           </TouchableOpacity>
         </View>
       </View>
 
-      <TouchableOpacity style={[styles.executeButton, isMultiColumn && styles.multiColumnExecuteButton]} onPress={executeAction}>
-        <Text style={[styles.executeButtonText, isMultiColumn && styles.multiColumnExecuteButtonText]}>
-          Executar
-        </Text>
-      </TouchableOpacity>
+      {/* Botões de execução */}
+      {action.payloads && action.payloads.length > 0 ? (
+        // Múltiplos botões para múltiplos payloads
+        <View style={styles.multipleActionsContainer}>
+          {action.payloads.map((payload) => (
+            <TouchableOpacity
+              key={payload.id}
+              style={[styles.executeButton, styles.multipleActionButton, isMultiColumn && styles.multiColumnExecuteButton]}
+              onPress={() => executeAction(payload.value)}
+            >
+              <Text style={[styles.executeButtonText, isMultiColumn && styles.multiColumnExecuteButtonText]}>
+                {payload.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ) : (
+        // Botão único para payload simples
+        <TouchableOpacity style={[styles.executeButton, isMultiColumn && styles.multiColumnExecuteButton]} onPress={() => executeAction()}>
+          <Text style={[styles.executeButtonText, isMultiColumn && styles.multiColumnExecuteButtonText]}>
+            Executar
+          </Text>
+        </TouchableOpacity>
+      )}
 
       {/* Menu Modal */}
       <Modal
@@ -78,7 +123,14 @@ const ActionCard = ({ action, onEdit, onDelete, isMultiColumn = false }) => {
           style={styles.modalOverlay}
           onPress={() => setShowMenu(false)}
         >
-          <View style={styles.menuContainer}>
+          <View style={[
+            styles.menuContainer,
+            {
+              position: 'absolute',
+              left: menuPosition.x,
+              top: menuPosition.y,
+            }
+          ]}>
             <TouchableOpacity style={styles.menuItem} onPress={handleEdit}>
               <Ionicons name="pencil" size={20} color="#8E8E93" />
               <Text style={styles.menuItemText}>Editar</Text>
@@ -100,7 +152,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
+    marginTop: 12,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -113,7 +165,7 @@ const styles = StyleSheet.create({
   multiColumnContainer: {
     flex: 1,
     marginHorizontal: 4,
-    marginBottom: 8,
+    marginTop: 8,
     padding: 12,
   },
   header: {
@@ -125,7 +177,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#E8F5E8',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -161,8 +212,6 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   menuContainer: {
     backgroundColor: '#fff',
@@ -195,21 +244,32 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
   },
   executeButton: {
-    backgroundColor: '#8E8E93',
+    backgroundColor: '#fff',
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#8E8E93',
   },
   multiColumnExecuteButton: {
     paddingVertical: 8,
   },
   executeButtonText: {
-    color: '#fff',
+    color: '#8E8E93',
     fontSize: 16,
     fontWeight: 'bold',
   },
   multiColumnExecuteButtonText: {
     fontSize: 15,
+  },
+  multipleActionsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  multipleActionButton: {
+    flex: 1,
+    minWidth: '45%',
   },
 });
 
