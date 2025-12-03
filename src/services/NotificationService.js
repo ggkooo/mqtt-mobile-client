@@ -79,7 +79,7 @@ class NotificationService {
   }
 
   // Enviar notificação de erro de conexão MQTT
-  async sendMQTTNotification(isConnected) {
+  async sendMQTTNotification(isConnected, errorMessage = null) {
     try {
       // Só enviar notificação em caso de erro/desconexão
       if (isConnected) {
@@ -93,7 +93,14 @@ class NotificationService {
       }
 
       const title = 'Erro de Conexão MQTT';
-      const body = 'Não foi possível conectar ao broker MQTT. Verifique suas configurações.';
+      let body = 'Não foi possível conectar ao broker MQTT. Verifique suas configurações.';
+
+      // Se há uma mensagem de erro específica, usa ela
+      if (errorMessage && typeof errorMessage === 'string') {
+        body = errorMessage.length > 100
+          ? errorMessage.substring(0, 97) + '...'
+          : errorMessage;
+      }
 
       await Notifications.scheduleNotificationAsync({
         content: {
@@ -106,7 +113,7 @@ class NotificationService {
         trigger: null,
       });
 
-      console.log(`Notificação MQTT enviada: ${title}`);
+      console.log(`Notificação MQTT enviada: ${title} - ${body}`);
     } catch (error) {
       console.error('Erro ao enviar notificação MQTT:', error);
     }
