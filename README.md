@@ -1,15 +1,36 @@
-# MQTT Mobile Client
+# GGKO's House
 
-Um cliente MQTT moderno e intuitivo desenvolvido em React Native para controle de dispositivos IoT.
+Um aplicativo moderno de automação residencial desenvolvido em React Native para controle de dispositivos IoT via MQTT.
+
+## 🏠 **Login Padrão**
+
+**Credenciais:** `admin / 1234` (pré-preenchidas na tela)
 
 ## 📱 Funcionalidades
 
+### **🔐 Autenticação e Segurança**
+- **Login Padrão**: admin/1234 sempre funciona
+- **Autenticação Biométrica**: Face ID / Touch ID para desbloqueio
+- **Bloqueio Automático**: App bloqueia ao sair e voltar
+- **Reset Automático**: Credenciais limpas a cada inicialização
+
+### **🌐 Conectividade MQTT**
 - **Conexão MQTT Automática**: Conecta automaticamente ao broker na inicialização
 - **Protocolo Personalizável**: Escolha entre WebSocket (ws://) e WebSocket Seguro (wss://)
-- **Ações IoT**: Crie, edite e execute ações personalizadas para seus dispositivos
-- **Interface Intuitiva**: Design moderno com status visual da conexão
 - **Reconexão Automática**: Detecta perda de conexão e reconecta automaticamente
-- **Autenticação**: Suporte a username/password para brokers seguros
+- **Autenticação MQTT**: Suporte a username/password para brokers seguros
+
+### **🏡 Controle de Dispositivos**
+- **Ações IoT Personalizadas**: Crie, edite e execute ações para seus dispositivos
+- **Múltiplos Payloads**: Suporte para ações com vários comandos (ex: Ligar/Desligar)
+- **Notificações Push**: Confirmação de execução de ações via notificação
+- **Interface Intuitiva**: Design moderno com status visual da conexão
+
+### **🔔 Sistema de Notificações**
+- **Logo Personalizada**: Notificações com a logo do GGKO's House
+- **Feedback Instantâneo**: Notificações para ações executadas
+- **Notificações de Erro**: Alertas para problemas de conectividade
+- **Sem Interrupções**: Notificações discretas, sem modals
 
 ## 🚀 Tecnologias
 
