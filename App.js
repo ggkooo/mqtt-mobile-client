@@ -12,6 +12,7 @@ import LoadingScreen from './src/screens/LoadingScreen';
 import BiometricAuthScreen from './src/screens/BiometricAuthScreen';
 import NotificationService from './src/services/NotificationService';
 import AuthService from './src/services/AuthService';
+import MQTTService from './src/services/MQTTService';
 
 const Stack = createStackNavigator();
 
@@ -29,6 +30,10 @@ const AppNavigator = () => {
 
         // Inicializar permissões de notificação
         await NotificationService.requestPermissions();
+
+        // Tentar inicializar conexão MQTT automática
+        console.log('Tentando inicialização MQTT automática...');
+        await MQTTService.initializeOnStartup();
       } catch (error) {
         console.error('Erro na inicialização do app:', error);
       }
