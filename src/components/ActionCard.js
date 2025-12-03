@@ -2,16 +2,19 @@ import React, { useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, Modal, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MQTTService from '../services/MQTTService';
+import NotificationService from '../services/NotificationService';
 
 const ActionCard = ({ action, onEdit, onDelete, isMultiColumn = false }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
   const menuButtonRef = useRef(null);
 
-  const executeAction = async (payload = null) => {
+  const executeAction = async (payload = null, payloadName = null) => {
     try {
       if (!MQTTService.isConnected) {
-        Alert.alert('Erro', 'Não conectado ao broker MQTT');
+        // Enviar notificação de falha
+        const actionDescription = payloadName ? `${action.name} - ${payloadName}` : action.name;
+        await NotificationService.sendActionNotification(actionDescription, false);
         return;
       }
 
@@ -19,9 +22,16 @@ const ActionCard = ({ action, onEdit, onDelete, isMultiColumn = false }) => {
       const payloadToSend = payload || action.payload;
 
       await MQTTService.publish(action.topic, payloadToSend);
-      Alert.alert('Sucesso', `Ação "${action.name}" executada com sucesso!`);
+
+      // Enviar apenas notificação de sucesso (sem modal)
+      // Se tem payloadName (múltiplos payloads), inclui na descrição
+      const actionDescription = payloadName ? `${action.name} - ${payloadName}` : action.name;
+      await NotificationService.sendActionNotification(actionDescription, true);
+
     } catch (error) {
-      Alert.alert('Erro', `Falha ao executar ação: ${error.message}`);
+      // Enviar apenas notificação de falha (sem modal)
+      const actionDescription = payloadName ? `${action.name} - ${payloadName}` : action.name;
+      await NotificationService.sendActionNotification(actionDescription, false);
     }
   };
 
@@ -95,7 +105,7 @@ const ActionCard = ({ action, onEdit, onDelete, isMultiColumn = false }) => {
             <TouchableOpacity
               key={payload.id}
               style={[styles.executeButton, styles.multipleActionButton, isMultiColumn && styles.multiColumnExecuteButton]}
-              onPress={() => executeAction(payload.value)}
+              onPress={() => executeAction(payload.value, payload.name)}
             >
               <Text style={[styles.executeButtonText, isMultiColumn && styles.multiColumnExecuteButtonText]}>
                 {payload.name}
