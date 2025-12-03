@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AuthService from '../services/AuthService';
+import MQTTService from '../services/MQTTService';
+import NotificationService from '../services/NotificationService';
 
 const AUTH_KEY = 'user_auth';
 
@@ -24,6 +26,12 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     checkAuthStatus();
+
+    // Configurar callback de erro do MQTT Service para enviar notificações
+    MQTTService.setErrorCallback(async (error, title) => {
+      console.error(`${title}:`, error);
+      await NotificationService.sendMQTTNotification(false, error);
+    });
 
     // Listener para mudança de estado do app (background/foreground)
     const handleAppStateChange = async (nextAppState) => {
@@ -58,6 +66,9 @@ export const AuthProvider = ({ children }) => {
           } else {
             console.log('Não bloqueando - condições não atendidas');
           }
+
+          // Tentar reconectar MQTT automaticamente quando o app voltar
+          await attemptMQTTReconnection();
         } catch (error) {
           console.error('Erro ao verificar status de autenticação:', error);
         }
@@ -76,6 +87,31 @@ export const AuthProvider = ({ children }) => {
       subscription?.remove();
     };
   }, []); // Removido isAuthenticated da dependência
+
+  // Função para tentar reconexão MQTT automática
+  const attemptMQTTReconnection = async () => {
+    try {
+      console.log('Tentando reconexão MQTT automática...');
+
+      // Verifica se já está conectado
+      if (MQTTService.isConnected) {
+        console.log('MQTT já conectado');
+        return;
+      }
+
+      // Tenta carregar configuração salva e reconectar
+      const configLoaded = await MQTTService.loadSavedConfig();
+      if (configLoaded) {
+        await MQTTService.reconnect();
+        console.log('Reconexão MQTT automática bem-sucedida');
+      } else {
+        console.log('Sem configuração MQTT salva para reconexão automática');
+      }
+    } catch (error) {
+      console.error('Erro na reconexão MQTT automática:', error);
+      // Não exibir notificação aqui, pois já é tratado pelo error callback do MQTTService
+    }
+  };
 
   const checkAuthStatus = async () => {
     try {
