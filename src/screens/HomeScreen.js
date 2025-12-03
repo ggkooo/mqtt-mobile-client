@@ -119,40 +119,56 @@ const HomeScreen = ({ navigation }) => {
       setMqttConnecting(true);
 
       if (MQTTService.isConnected) {
+        setMqttConnected(true);
         setMqttConnecting(false);
         return;
       }
 
-      const savedConfig = await AsyncStorage.getItem(MQTT_CONFIG_KEY);
-      if (!savedConfig) {
-        setMqttConnecting(false);
-        return;
-      }
-
-      const config = JSON.parse(savedConfig);
-
-      if (!config.brokerHost || !config.brokerPort) {
-        setMqttConnecting(false);
-        return;
-      }
-
-      await MQTTService.connect(
-        config.brokerHost,
-        parseInt(config.brokerPort),
-        config.clientId || null,
-        config.useAuth ? config.username : null,
-        config.useAuth ? config.password : null,
-        {
-          forceProtocol: config.protocol
+      // Primeiro tenta carregar configuração salva no MQTTService
+      const configLoaded = await MQTTService.loadSavedConfig();
+      if (!configLoaded) {
+        // Se não conseguiu carregar do service, tenta do AsyncStorage local
+        const savedConfig = await AsyncStorage.getItem(MQTT_CONFIG_KEY);
+        if (!savedConfig) {
+          console.log('Nenhuma configuração MQTT encontrada para conexão automática');
+          setMqttConnecting(false);
+          return;
         }
-      );
+
+        const config = JSON.parse(savedConfig);
+        if (!config.brokerHost || !config.brokerPort) {
+          console.log('Configuração MQTT incompleta');
+          setMqttConnecting(false);
+          return;
+        }
+
+        await MQTTService.connect(
+          config.brokerHost,
+          parseInt(config.brokerPort),
+          config.clientId || null,
+          config.useAuth ? config.username : null,
+          config.useAuth ? config.password : null,
+          {
+            forceProtocol: config.protocol
+          }
+        );
+      } else {
+        // Se carregou configuração, usa reconexão do service
+        await MQTTService.reconnect();
+      }
 
       setMqttConnected(true);
+      console.log('Conexão MQTT automática bem-sucedida');
 
     } catch (error) {
-      console.log(`Falha na conexão automática MQTT: ${error.message}`);
+      console.error(`Falha na conexão automática MQTT: ${error.message}`);
+      setMqttConnected(false);
       // Enviar notificação apenas em caso de erro
-      await NotificationService.sendMQTTNotification(false);
+      try {
+        await NotificationService.sendMQTTNotification(false, `Erro de conexão: ${error.message}`);
+      } catch (notificationError) {
+        console.error('Erro ao enviar notificação:', notificationError);
+      }
     } finally {
       setMqttConnecting(false);
     }
@@ -290,31 +306,49 @@ const HomeScreen = ({ navigation }) => {
     try {
       setMqttConnecting(true);
 
-      const savedConfig = await AsyncStorage.getItem(MQTT_CONFIG_KEY);
-      if (!savedConfig) {
-        setMqttConnecting(false);
-        return;
+      // Primeiro tenta usar reconexão do MQTTService (que carrega configuração automaticamente)
+      if (MQTTService.brokerConfig) {
+        await MQTTService.reconnect();
+      } else {
+        // Se não tem configuração no service, carrega e tenta conectar
+        const savedConfig = await AsyncStorage.getItem(MQTT_CONFIG_KEY);
+        if (!savedConfig) {
+          console.log('Sem configuração MQTT salva para reconexão');
+          setMqttConnecting(false);
+          return;
+        }
+
+        const config = JSON.parse(savedConfig);
+        if (!config.brokerHost || !config.brokerPort) {
+          console.log('Configuração MQTT incompleta para reconexão');
+          setMqttConnecting(false);
+          return;
+        }
+
+        await MQTTService.connect(
+          config.brokerHost,
+          parseInt(config.brokerPort),
+          config.clientId || null,
+          config.useAuth ? config.username : null,
+          config.useAuth ? config.password : null,
+          {
+            forceProtocol: config.protocol
+          }
+        );
       }
 
-      const config = JSON.parse(savedConfig);
-
-      await MQTTService.connect(
-        config.brokerHost,
-        parseInt(config.brokerPort),
-        config.clientId || null,
-        config.useAuth ? config.username : null,
-        config.useAuth ? config.password : null,
-        {
-          forceProtocol: config.protocol
-        }
-      );
-
       setMqttConnected(true);
+      console.log('Reconexão MQTT bem-sucedida');
 
     } catch (error) {
-      console.log(`Falha na reconexão automática: ${error.message}`);
+      console.error(`Falha na reconexão MQTT: ${error.message}`);
+      setMqttConnected(false);
       // Enviar notificação apenas em caso de erro de reconexão
-      await NotificationService.sendMQTTNotification(false);
+      try {
+        await NotificationService.sendMQTTNotification(false, `Erro de reconexão: ${error.message}`);
+      } catch (notificationError) {
+        console.error('Erro ao enviar notificação:', notificationError);
+      }
     } finally {
       setMqttConnecting(false);
     }
