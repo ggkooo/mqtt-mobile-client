@@ -18,16 +18,22 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import ActionCard from '../components/ActionCard';
 import StorageService from '../services/StorageService';
 import MQTTService from '../services/MQTTService';
+import NotificationService from '../services/NotificationService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../context/AuthContext';
 
 const MQTT_CONFIG_KEY = 'mqtt_config';
 
+// NOTA: Este app possui proteção automática com bloqueio biométrico
+// Sempre que o usuário sair do app e voltar, será solicitada autenticação biométrica
+// (implementado no AuthContext via AppState listener)
+
 const HomeScreen = ({ navigation }) => {
+  const { logout } = useAuth();
   const [actions, setActions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [mqttConnected, setMqttConnected] = useState(false);
-  const [mqttConnecting, setMqttConnecting] = useState(false); // Novo estado para conexão
-  const [autoConnectAttempted, setAutoConnectAttempted] = useState(false); // Controla se já tentou conectar
+  const [mqttConnecting, setMqttConnecting] = useState(false); // Estado para conexão
   const [numColumns, setNumColumns] = useState(1);
   const [showMenu, setShowMenu] = useState(false);
   const [searchText, setSearchText] = useState('');
@@ -42,12 +48,9 @@ const HomeScreen = ({ navigation }) => {
       loadLayoutPreference();
       checkMQTTConnection();
 
-      // Tentativa de conexão automática apenas na primeira vez
-      if (!autoConnectAttempted) {
-        attemptAutoConnect();
-        setAutoConnectAttempted(true);
-      }
-    }, [autoConnectAttempted])
+      // Sempre tentar conectar automaticamente quando a tela for focada
+      attemptAutoConnect();
+    }, [])
   );
 
   const loadActions = async () => {
@@ -148,6 +151,8 @@ const HomeScreen = ({ navigation }) => {
 
     } catch (error) {
       console.log(`Falha na conexão automática MQTT: ${error.message}`);
+      // Enviar notificação apenas em caso de erro
+      await NotificationService.sendMQTTNotification(false);
     } finally {
       setMqttConnecting(false);
     }
@@ -169,7 +174,7 @@ const HomeScreen = ({ navigation }) => {
           setMqttConnecting(false);
 
           setTimeout(() => {
-            if (!MQTTService.isConnected && autoConnectAttempted) {
+            if (!MQTTService.isConnected) {
               attemptReconnect();
             }
           }, 5000);
@@ -248,6 +253,35 @@ const HomeScreen = ({ navigation }) => {
     }
   };
 
+  const handleLogout = () => {
+    Alert.alert(
+      'Sair',
+      'Você tem certeza de que deseja sair do aplicativo?',
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Sair',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Desconectar MQTT antes de fazer logout
+              if (MQTTService.isConnected) {
+                MQTTService.disconnect();
+              }
+              await logout();
+            } catch (error) {
+              console.error('Erro durante logout:', error);
+              Alert.alert('Erro', 'Erro ao sair do aplicativo');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const connectToMQTT = () => {
     navigation.navigate('MQTTSettings');
   };
@@ -279,6 +313,8 @@ const HomeScreen = ({ navigation }) => {
 
     } catch (error) {
       console.log(`Falha na reconexão automática: ${error.message}`);
+      // Enviar notificação apenas em caso de erro de reconexão
+      await NotificationService.sendMQTTNotification(false);
     } finally {
       setMqttConnecting(false);
     }
@@ -598,6 +634,25 @@ const HomeScreen = ({ navigation }) => {
                 {mqttConnected ? 'Configurações MQTT' : 'Conectar MQTT'}
               </Text>
             </TouchableOpacity>
+
+            <View style={styles.menuDivider} />
+
+            <TouchableOpacity
+              style={[styles.menuItem, styles.logoutItem]}
+              onPress={() => {
+                closeMenu();
+                handleLogout();
+              }}
+            >
+              <Ionicons
+                name="log-out-outline"
+                size={24}
+                color="#FF3B30"
+              />
+              <Text style={[styles.menuItemText, styles.logoutText]}>
+                Sair
+              </Text>
+            </TouchableOpacity>
           </View>
         </Pressable>
       </Modal>
@@ -781,6 +836,12 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#f0f0f0',
     marginHorizontal: 16,
+  },
+  logoutItem: {
+    backgroundColor: '#fff5f5',
+  },
+  logoutText: {
+    color: '#FF3B30',
   },
   listContainer: {
     paddingHorizontal: 20,
