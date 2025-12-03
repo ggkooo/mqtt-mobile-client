@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "mqtt-mobile-client",
-    "slug": "mqtt-mobile-client",
+    "name": "GGKO's House",
+    "slug": "gggkos-house",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -20,10 +20,30 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "com.android.vending.BILLING"
+      ],
+      "usesCleartextTraffic": true,
+      "notification": {
+        "icon": "./assets/notification-logo.png",
+        "color": "#8E8E93",
+        "iosDisplayInForeground": true
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-logo.png",
+          "color": "#8E8E93"
+        }
+      ]
+    ]
   }
 }
