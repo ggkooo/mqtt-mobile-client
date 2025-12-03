@@ -13,6 +13,83 @@ class MQTTService {
     this.clientId = null;
     this.keepAliveInterval = null;
     this.messageId = 1;
+    this.errorCallback = null;
+  }
+
+  // Método para definir callback de erro para notificações
+  setErrorCallback(callback) {
+    this.errorCallback = callback;
+  }
+
+  // Método para notificar erro de forma segura
+  notifyError(error, title = 'Erro de Conexão MQTT') {
+    if (this.errorCallback) {
+      this.errorCallback(error, title);
+    } else {
+      console.error(`${title}:`, error);
+    }
+  }
+
+  // Método para carregar configuração salva do AsyncStorage
+  async loadSavedConfig() {
+    try {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      const savedConfig = await AsyncStorage.getItem('mqtt_config');
+      if (savedConfig) {
+        const config = JSON.parse(savedConfig);
+        if (config && config.brokerHost && config.brokerPort) {
+          this.brokerConfig = {
+            brokerHost: config.brokerHost,
+            brokerPort: Number(config.brokerPort),
+            clientId: config.clientId,
+            username: config.useAuth ? config.username : null,
+            password: config.useAuth ? config.password : null,
+            options: {
+              forceProtocol: config.protocol
+            }
+          };
+          return true;
+        }
+      }
+      return false;
+    } catch (error) {
+      console.error('Erro ao carregar configuração MQTT salva:', error);
+      return false;
+    }
+  }
+
+  // Método para inicializar automaticamente na startup do app
+  async initializeOnStartup() {
+    try {
+      console.log('Inicializando MQTTService na startup...');
+
+      // Carrega configuração salva
+      const configLoaded = await this.loadSavedConfig();
+
+      if (configLoaded && this.brokerConfig) {
+        console.log('Configuração MQTT carregada, tentando conexão automática...');
+
+        // Tenta conectar automaticamente
+        await this.connect(
+          this.brokerConfig.brokerHost,
+          this.brokerConfig.brokerPort,
+          this.brokerConfig.clientId,
+          this.brokerConfig.username,
+          this.brokerConfig.password,
+          this.brokerConfig.options
+        );
+
+        console.log('Conexão MQTT automática na startup bem-sucedida');
+        return true;
+      } else {
+        console.log('Sem configuração MQTT salva para conexão automática na startup');
+        return false;
+      }
+    } catch (error) {
+      console.error('Erro na inicialização MQTT automática:', error);
+      this.notifyError(`Erro na conexão automática: ${error.message}`, 'Erro de Startup MQTT');
+      return false;
+    }
   }
 
   connect(brokerHost, brokerPort = 8080, clientId = null, username = null, password = null, options = {}) {
@@ -704,20 +781,36 @@ class MQTTService {
   }
 
   async reconnect() {
+    // Se não há configuração salva no serviço, tenta carregar do AsyncStorage
     if (!this.brokerConfig) {
-      console.error('Configuração do broker não encontrada');
+      console.log('Configuração MQTT não encontrada, tentando carregar configuração salva...');
+      const configLoaded = await this.loadSavedConfig();
+      if (!configLoaded) {
+        console.error('Não foi possível carregar configuração MQTT para reconexão');
+        this.notifyError('Configuração MQTT não encontrada. Verifique as configurações.', 'Erro de Reconexão');
+        return;
+      }
+    }
+
+    // Verificar se a configuração tem os campos necessários
+    if (!this.brokerConfig.brokerHost || !this.brokerConfig.brokerPort) {
+      console.error('Configuração MQTT incompleta para reconexão');
+      this.notifyError('Configuração MQTT incompleta. Verifique host e porta.', 'Erro de Reconexão');
       return;
     }
 
     try {
+      console.log('Tentando reconectar ao broker MQTT...');
       await this.connect(
         this.brokerConfig.brokerHost,
         this.brokerConfig.brokerPort,
         this.brokerConfig.clientId,
         this.brokerConfig.username,
-        this.brokerConfig.password
+        this.brokerConfig.password,
+        this.brokerConfig.options
       );
 
+      // Re-inscrever em todos os tópicos salvos
       for (const topic of this.subscriptions) {
         try {
           await this.subscribe(topic);
@@ -726,8 +819,11 @@ class MQTTService {
         }
       }
 
+      console.log('Reconexão MQTT bem-sucedida');
+
     } catch (error) {
-      console.error('Falha na reconexão:', error);
+      console.error('Falha na reconexão MQTT:', error);
+      this.notifyError(`Falha na reconexão: ${error.message}`, 'Erro de Reconexão');
     }
   }
 
