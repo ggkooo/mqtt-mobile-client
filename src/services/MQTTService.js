@@ -16,21 +16,16 @@ class MQTTService {
     this.errorCallback = null;
   }
 
-  // Método para definir callback de erro para notificações
   setErrorCallback(callback) {
     this.errorCallback = callback;
   }
 
-  // Método para notificar erro de forma segura
   notifyError(error, title = 'Erro de Conexão MQTT') {
     if (this.errorCallback) {
       this.errorCallback(error, title);
-    } else {
-      console.error(`${title}:`, error);
     }
   }
 
-  // Método para carregar configuração salva do AsyncStorage
   async loadSavedConfig() {
     try {
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
@@ -53,23 +48,15 @@ class MQTTService {
       }
       return false;
     } catch (error) {
-      console.error('Erro ao carregar configuração MQTT salva:', error);
       return false;
     }
   }
 
-  // Método para inicializar automaticamente na startup do app
   async initializeOnStartup() {
     try {
-      console.log('Inicializando MQTTService na startup...');
-
-      // Carrega configuração salva
       const configLoaded = await this.loadSavedConfig();
 
       if (configLoaded && this.brokerConfig) {
-        console.log('Configuração MQTT carregada, tentando conexão automática...');
-
-        // Tenta conectar automaticamente
         await this.connect(
           this.brokerConfig.brokerHost,
           this.brokerConfig.brokerPort,
@@ -79,14 +66,11 @@ class MQTTService {
           this.brokerConfig.options
         );
 
-        console.log('Conexão MQTT automática na startup bem-sucedida');
         return true;
       } else {
-        console.log('Sem configuração MQTT salva para conexão automática na startup');
         return false;
       }
     } catch (error) {
-      console.error('Erro na inicialização MQTT automática:', error);
       this.notifyError(`Erro na conexão automática: ${error.message}`, 'Erro de Startup MQTT');
       return false;
     }
@@ -118,7 +102,6 @@ class MQTTService {
         this.attemptConnection(resolve, reject, 0);
 
       } catch (error) {
-        console.error('Erro ao conectar:', error);
         this.connectionPromise = null;
         reject(error);
       }
@@ -149,7 +132,7 @@ class MQTTService {
           this.ws.send(new Uint8Array([0xE0, 0x00]));
         }
       } catch (error) {
-        console.log('Erro ao enviar DISCONNECT:', error.message);
+        // Silent fail
       }
 
       this.ws.close();
@@ -168,7 +151,6 @@ class MQTTService {
     if (attemptIndex >= filteredAttempts.length) {
       this.connectionPromise = null;
       const errorMsg = `Falha na conexão MQTT após ${filteredAttempts.length} tentativas. Verifique se o broker está rodando e a configuração está correta.`;
-      console.error(errorMsg);
       reject(new Error(errorMsg));
       return;
     }
@@ -250,7 +232,6 @@ class MQTTService {
       };
 
     } catch (error) {
-      console.error(`Erro na tentativa ${attemptIndex + 1}:`, error);
       setTimeout(() => {
         this.attemptConnection(resolve, reject, attemptIndex + 1);
       }, 200);
@@ -279,8 +260,6 @@ class MQTTService {
 
     return 3000;
   }
-
-  // ...existing code...
 
   generateConnectionAttempts(brokerHost, brokerPort) {
     const forceProtocol = this.tempBrokerConfig?.options?.forceProtocol;
@@ -384,7 +363,6 @@ class MQTTService {
       return true;
     });
 
-
     return filtered;
   }
 
@@ -463,8 +441,6 @@ class MQTTService {
       this.ws.send(new Uint8Array(completePacket));
 
     } catch (error) {
-      console.error('Erro ao enviar CONNECT packet:', error);
-
       if (error.name === 'InvalidStateError' || error.message.includes('INVALID_STATE_ERR')) {
         setTimeout(() => {
           this.sendConnectPacket(username, password);
@@ -518,7 +494,7 @@ class MQTTService {
           break;
       }
     } catch (error) {
-      console.error('Erro ao processar mensagem:', error);
+      // Silent fail
     }
   }
 
@@ -568,7 +544,6 @@ class MQTTService {
       this.startKeepAlive();
 
     } else {
-      console.error('Conexão rejeitada pelo broker, código:', returnCode);
       const errorMessages = {
         1: 'Versão do protocolo não suportada',
         2: 'Client ID rejeitado',
@@ -577,8 +552,6 @@ class MQTTService {
         5: 'Não autorizado'
       };
       const errorMsg = errorMessages[returnCode] || 'Erro desconhecido';
-      console.error(`Motivo: ${errorMsg}`);
-
 
       if (this.ws) {
         this.ws.close();
@@ -606,12 +579,12 @@ class MQTTService {
         try {
           callback(topic, payload);
         } catch (error) {
-          console.error('Erro no callback:', error);
+          // Silent fail
         }
       });
 
     } catch (error) {
-      console.error('Erro ao processar PUBLISH:', error);
+      // Silent fail
     }
   }
 
@@ -631,7 +604,7 @@ class MQTTService {
     try {
       this.forceDisconnect();
     } catch (error) {
-      console.error('Erro ao desconectar:', error);
+      // Silent fail
     }
   }
 
@@ -683,7 +656,6 @@ class MQTTService {
         }
 
       } catch (error) {
-        console.error('Erro ao publicar:', error);
         reject(error);
       }
     });
@@ -719,7 +691,6 @@ class MQTTService {
 
         resolve();
       } catch (error) {
-        console.error('Erro ao se inscrever:', error);
         reject(error);
       }
     });
@@ -746,7 +717,6 @@ class MQTTService {
 
         resolve();
       } catch (error) {
-        console.error('Erro ao se desinscrever:', error);
         reject(error);
       }
     });
@@ -781,26 +751,20 @@ class MQTTService {
   }
 
   async reconnect() {
-    // Se não há configuração salva no serviço, tenta carregar do AsyncStorage
     if (!this.brokerConfig) {
-      console.log('Configuração MQTT não encontrada, tentando carregar configuração salva...');
       const configLoaded = await this.loadSavedConfig();
       if (!configLoaded) {
-        console.error('Não foi possível carregar configuração MQTT para reconexão');
         this.notifyError('Configuração MQTT não encontrada. Verifique as configurações.', 'Erro de Reconexão');
         return;
       }
     }
 
-    // Verificar se a configuração tem os campos necessários
     if (!this.brokerConfig.brokerHost || !this.brokerConfig.brokerPort) {
-      console.error('Configuração MQTT incompleta para reconexão');
       this.notifyError('Configuração MQTT incompleta. Verifique host e porta.', 'Erro de Reconexão');
       return;
     }
 
     try {
-      console.log('Tentando reconectar ao broker MQTT...');
       await this.connect(
         this.brokerConfig.brokerHost,
         this.brokerConfig.brokerPort,
@@ -810,19 +774,15 @@ class MQTTService {
         this.brokerConfig.options
       );
 
-      // Re-inscrever em todos os tópicos salvos
       for (const topic of this.subscriptions) {
         try {
           await this.subscribe(topic);
         } catch (err) {
-          console.error(`Erro ao re-inscrever no tópico ${topic}:`, err);
+          // Silent fail for re-subscription errors
         }
       }
 
-      console.log('Reconexão MQTT bem-sucedida');
-
     } catch (error) {
-      console.error('Falha na reconexão MQTT:', error);
       this.notifyError(`Falha na reconexão: ${error.message}`, 'Erro de Reconexão');
     }
   }
