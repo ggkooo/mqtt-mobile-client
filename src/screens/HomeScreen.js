@@ -24,9 +24,9 @@ import { useAuth } from '../context/AuthContext';
 
 const MQTT_CONFIG_KEY = 'mqtt_config';
 
-// NOTA: Este app possui proteção automática com bloqueio biométrico
-// Sempre que o usuário sair do app e voltar, será solicitada autenticação biométrica
-// (implementado no AuthContext via AppState listener)
+// NOTE: This app has automatic protection with biometric lock
+// Whenever the user leaves the app and returns, biometric authentication will be requested
+// (implemented in AuthContext via AppState listener)
 
 const HomeScreen = ({ navigation }) => {
   const { logout } = useAuth();
@@ -48,7 +48,7 @@ const HomeScreen = ({ navigation }) => {
       loadLayoutPreference();
       checkMQTTConnection();
 
-      // Sempre tentar conectar automaticamente quando a tela for focada
+      // Always try to connect automatically when screen is focused
       attemptAutoConnect();
     }, [])
   );
@@ -58,7 +58,7 @@ const HomeScreen = ({ navigation }) => {
       const savedActions = await StorageService.loadActions();
       setActions(savedActions);
     } catch (error) {
-      Alert.alert('Erro', 'Falha ao carregar ações salvas');
+      Alert.alert('Error', 'Failed to load saved actions');
     }
   };
 
@@ -73,7 +73,7 @@ const HomeScreen = ({ navigation }) => {
 
   const toggleMenu = async () => {
     if (!showMenu) {
-      // Animar rotação ao abrir o menu
+      // Animate rotation when opening menu
       Animated.timing(rotationAnim, {
         toValue: 1,
         duration: 300,
@@ -81,7 +81,7 @@ const HomeScreen = ({ navigation }) => {
       }).start();
       setShowMenu(true);
     } else {
-      // Animar rotação de volta ao fechar o menu
+      // Animate rotation back when closing menu
       Animated.timing(rotationAnim, {
         toValue: 0,
         duration: 300,
@@ -106,7 +106,7 @@ const HomeScreen = ({ navigation }) => {
       setNumColumns(newNumColumns);
       await StorageService.saveLayoutPreference(newNumColumns);
     } catch (error) {
-      Alert.alert('Erro', 'Falha ao salvar preferência de layout');
+      Alert.alert('Error', 'Failed to save layout preference');
     }
   };
 
@@ -124,10 +124,10 @@ const HomeScreen = ({ navigation }) => {
         return;
       }
 
-      // Primeiro tenta carregar configuração salva no MQTTService
+      // First try to load saved configuration in MQTTService
       const configLoaded = await MQTTService.loadSavedConfig();
       if (!configLoaded) {
-        // Se não conseguiu carregar do service, tenta do AsyncStorage local
+        // If couldn't load from service, try from local AsyncStorage
         const savedConfig = await AsyncStorage.getItem(MQTT_CONFIG_KEY);
         if (!savedConfig) {
           setMqttConnecting(false);
@@ -150,8 +150,8 @@ const HomeScreen = ({ navigation }) => {
             forceProtocol: config.protocol
           }
         );
-      } else {
-        // Se carregou configuração, usa reconexão do service
+        } else {
+        // If loaded configuration, use service reconnection
         await MQTTService.reconnect();
       }
 
@@ -159,9 +159,9 @@ const HomeScreen = ({ navigation }) => {
 
     } catch (error) {
       setMqttConnected(false);
-      // Enviar notificação apenas em caso de erro
+      // Send notification only on error
       try {
-        await NotificationService.sendMQTTNotification(false, `Erro de conexão: ${error.message}`);
+        await NotificationService.sendMQTTNotification(false, `Connection error: ${error.message}`);
       } catch (notificationError) {
         // Silent fail on notification error
       }
@@ -259,33 +259,33 @@ const HomeScreen = ({ navigation }) => {
     try {
       await StorageService.deleteAction(actionId);
       await loadActions();
-      Alert.alert('Sucesso', 'Ação excluída com sucesso!');
+      Alert.alert('Success', 'Action deleted successfully!');
     } catch (error) {
-      Alert.alert('Erro', 'Falha ao excluir ação');
+      Alert.alert('Error', 'Failed to delete action');
     }
   };
 
   const handleLogout = () => {
     Alert.alert(
-      'Sair',
-      'Você tem certeza de que deseja sair do aplicativo?',
+      'Logout',
+      'Are you sure you want to logout from the application?',
       [
         {
-          text: 'Cancelar',
+          text: 'Cancel',
           style: 'cancel',
         },
         {
-          text: 'Sair',
+          text: 'Logout',
           style: 'destructive',
           onPress: async () => {
             try {
-              // Desconectar MQTT antes de fazer logout
+              // Disconnect MQTT before logout
               if (MQTTService.isConnected) {
                 MQTTService.disconnect();
               }
               await logout();
             } catch (error) {
-              Alert.alert('Erro', 'Erro ao sair do aplicativo');
+              Alert.alert('Error', 'Error logging out from application');
             }
           },
         },
@@ -301,11 +301,11 @@ const HomeScreen = ({ navigation }) => {
     try {
       setMqttConnecting(true);
 
-      // Primeiro tenta usar reconexão do MQTTService (que carrega configuração automaticamente)
+      // First try using MQTTService reconnection (which loads configuration automatically)
       if (MQTTService.brokerConfig) {
         await MQTTService.reconnect();
       } else {
-        // Se não tem configuração no service, carrega e tenta conectar
+        // If no configuration in service, load and try to connect
         const savedConfig = await AsyncStorage.getItem(MQTT_CONFIG_KEY);
         if (!savedConfig) {
           setMqttConnecting(false);
@@ -334,9 +334,9 @@ const HomeScreen = ({ navigation }) => {
 
     } catch (error) {
       setMqttConnected(false);
-      // Enviar notificação apenas em caso de erro de reconexão
+      // Send notification only on reconnection error
       try {
-        await NotificationService.sendMQTTNotification(false, `Erro de reconexão: ${error.message}`);
+        await NotificationService.sendMQTTNotification(false, `Reconnection error: ${error.message}`);
       } catch (notificationError) {
         // Silent fail
       }
@@ -358,9 +358,9 @@ const HomeScreen = ({ navigation }) => {
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
       <Ionicons name="home-outline" size={64} color="#ccc" />
-      <Text style={styles.emptyTitle}>Nenhuma ação configurada</Text>
+      <Text style={styles.emptyTitle}>No actions configured</Text>
       <Text style={styles.emptySubtitle}>
-        Toque no botão + para adicionar sua primeira ação IoT
+        Tap the + button to add your first IoT action
       </Text>
     </View>
   );
@@ -375,9 +375,9 @@ const HomeScreen = ({ navigation }) => {
               <Ionicons name="sync" size={24} color="#FF9800" />
             </View>
             <View style={styles.mqttStatusContent}>
-              <Text style={styles.mqttStatusTitle}>Conectando ao MQTT...</Text>
+              <Text style={styles.mqttStatusTitle}>Connecting to MQTT...</Text>
               <Text style={styles.mqttStatusSubtitle}>
-                Estabelecendo conexão automática com o broker
+                Establishing automatic connection to broker
               </Text>
             </View>
           </View>
@@ -397,9 +397,9 @@ const HomeScreen = ({ navigation }) => {
               <Ionicons name="cloud-offline-outline" size={24} color="#F44336" />
             </View>
             <View style={styles.mqttStatusContent}>
-              <Text style={styles.mqttStatusTitle}>MQTT Desconectado</Text>
+              <Text style={styles.mqttStatusTitle}>MQTT Disconnected</Text>
               <Text style={styles.mqttStatusSubtitle}>
-                Toque aqui para configurar a conexão com o broker
+                Tap here to configure broker connection
               </Text>
             </View>
             <View style={styles.mqttStatusAction}>
@@ -417,7 +417,7 @@ const HomeScreen = ({ navigation }) => {
           <View style={styles.mqttStatusIconConnected}>
             <Ionicons name="cloud-done" size={20} color="#4CAF50" />
           </View>
-          <Text style={styles.mqttStatusTitleConnected}>MQTT Conectado</Text>
+          <Text style={styles.mqttStatusTitleConnected}>MQTT Connected</Text>
           <TouchableOpacity
             onPress={connectToMQTT}
             style={styles.mqttStatusSettings}
@@ -438,7 +438,7 @@ const HomeScreen = ({ navigation }) => {
             <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Buscar ações..."
+              placeholder="Search actions..."
               value={searchText}
               onChangeText={setSearchText}
               placeholderTextColor="#999"
@@ -473,10 +473,10 @@ const HomeScreen = ({ navigation }) => {
         </View>
       </View>
 
-      {/* Status de Conexão MQTT */}
+      {/* MQTT Connection Status */}
       {renderMQTTStatus()}
 
-      {/* Lista de ações */}
+      {/* Actions list */}
       <FlatList
         data={filteredAndSortedActions}
         renderItem={renderAction}
@@ -531,7 +531,7 @@ const HomeScreen = ({ navigation }) => {
           onPress={() => setShowSortModal(false)}
         >
           <View style={styles.sortModalContainer}>
-            <Text style={styles.sortModalTitle}>Ordenar por:</Text>
+            <Text style={styles.sortModalTitle}>Sort by:</Text>
 
             <TouchableOpacity
               style={[
@@ -547,7 +547,7 @@ const HomeScreen = ({ navigation }) => {
                 styles.sortOptionText,
                 sortOrder === 'addition' && styles.sortOptionTextSelected
               ]}>
-                Ordem de Adição
+                Order of Addition
               </Text>
               {sortOrder === 'addition' && (
                 <Ionicons name="checkmark" size={20} color="#007AFF" />
@@ -568,7 +568,7 @@ const HomeScreen = ({ navigation }) => {
                 styles.sortOptionText,
                 sortOrder === 'alphabetic' && styles.sortOptionTextSelected
               ]}>
-                Ordem Alfabética (A-Z)
+                Alphabetical Order (A-Z)
               </Text>
               {sortOrder === 'alphabetic' && (
                 <Ionicons name="checkmark" size={20} color="#007AFF" />
@@ -589,7 +589,7 @@ const HomeScreen = ({ navigation }) => {
                 styles.sortOptionText,
                 sortOrder === 'type' && styles.sortOptionTextSelected
               ]}>
-                Por Tipo
+                By Type
               </Text>
               {sortOrder === 'type' && (
                 <Ionicons name="checkmark" size={20} color="#007AFF" />
@@ -619,7 +619,7 @@ const HomeScreen = ({ navigation }) => {
               }}
             >
               <Ionicons name="add-circle" size={24} color="#666" />
-              <Text style={styles.menuItemText}>Nova Ação IoT</Text>
+              <Text style={styles.menuItemText}>New IoT Action</Text>
             </TouchableOpacity>
 
             <View style={styles.menuDivider} />
@@ -637,7 +637,7 @@ const HomeScreen = ({ navigation }) => {
                 color="#666"
               />
               <Text style={styles.menuItemText}>
-                {numColumns === 1 ? 'Visualização em Grade' : 'Visualização em Lista'}
+                {numColumns === 1 ? 'Grid View' : 'List View'}
               </Text>
             </TouchableOpacity>
 
@@ -656,7 +656,7 @@ const HomeScreen = ({ navigation }) => {
                 color={mqttConnected ? '#888' : '#999'}
               />
               <Text style={styles.menuItemText}>
-                {mqttConnected ? 'Configurações MQTT' : 'Conectar MQTT'}
+                {mqttConnected ? 'MQTT Settings' : 'Connect MQTT'}
               </Text>
             </TouchableOpacity>
 
@@ -675,7 +675,7 @@ const HomeScreen = ({ navigation }) => {
                 color="#FF3B30"
               />
               <Text style={[styles.menuItemText, styles.logoutText]}>
-                Sair
+                Logout
               </Text>
             </TouchableOpacity>
           </View>
