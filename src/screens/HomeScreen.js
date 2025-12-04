@@ -67,7 +67,7 @@ const HomeScreen = ({ navigation }) => {
       const preference = await StorageService.loadLayoutPreference();
       setNumColumns(preference);
     } catch (error) {
-      console.log('Erro ao carregar preferência de layout:', error);
+      // Use default layout preference (1 column)
     }
   };
 
@@ -130,14 +130,12 @@ const HomeScreen = ({ navigation }) => {
         // Se não conseguiu carregar do service, tenta do AsyncStorage local
         const savedConfig = await AsyncStorage.getItem(MQTT_CONFIG_KEY);
         if (!savedConfig) {
-          console.log('Nenhuma configuração MQTT encontrada para conexão automática');
           setMqttConnecting(false);
           return;
         }
 
         const config = JSON.parse(savedConfig);
         if (!config.brokerHost || !config.brokerPort) {
-          console.log('Configuração MQTT incompleta');
           setMqttConnecting(false);
           return;
         }
@@ -158,16 +156,14 @@ const HomeScreen = ({ navigation }) => {
       }
 
       setMqttConnected(true);
-      console.log('Conexão MQTT automática bem-sucedida');
 
     } catch (error) {
-      console.error(`Falha na conexão automática MQTT: ${error.message}`);
       setMqttConnected(false);
       // Enviar notificação apenas em caso de erro
       try {
         await NotificationService.sendMQTTNotification(false, `Erro de conexão: ${error.message}`);
       } catch (notificationError) {
-        console.error('Erro ao enviar notificação:', notificationError);
+        // Silent fail on notification error
       }
     } finally {
       setMqttConnecting(false);
@@ -289,7 +285,6 @@ const HomeScreen = ({ navigation }) => {
               }
               await logout();
             } catch (error) {
-              console.error('Erro durante logout:', error);
               Alert.alert('Erro', 'Erro ao sair do aplicativo');
             }
           },
@@ -313,14 +308,12 @@ const HomeScreen = ({ navigation }) => {
         // Se não tem configuração no service, carrega e tenta conectar
         const savedConfig = await AsyncStorage.getItem(MQTT_CONFIG_KEY);
         if (!savedConfig) {
-          console.log('Sem configuração MQTT salva para reconexão');
           setMqttConnecting(false);
           return;
         }
 
         const config = JSON.parse(savedConfig);
         if (!config.brokerHost || !config.brokerPort) {
-          console.log('Configuração MQTT incompleta para reconexão');
           setMqttConnecting(false);
           return;
         }
@@ -338,16 +331,14 @@ const HomeScreen = ({ navigation }) => {
       }
 
       setMqttConnected(true);
-      console.log('Reconexão MQTT bem-sucedida');
 
     } catch (error) {
-      console.error(`Falha na reconexão MQTT: ${error.message}`);
       setMqttConnected(false);
       // Enviar notificação apenas em caso de erro de reconexão
       try {
         await NotificationService.sendMQTTNotification(false, `Erro de reconexão: ${error.message}`);
       } catch (notificationError) {
-        console.error('Erro ao enviar notificação:', notificationError);
+        // Silent fail
       }
     } finally {
       setMqttConnecting(false);
