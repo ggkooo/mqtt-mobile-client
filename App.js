@@ -23,10 +23,10 @@ const AppNavigator = () => {
     // Inicialização do app
     const initializeApp = async () => {
       try {
-        // LIMPAR CREDENCIAIS ANTIGAS (executar uma vez)
-        console.log('Iniciando limpeza das credenciais antigas...');
-        await AuthService.clearAllData();
-        console.log('Credenciais antigas removidas - app resetado para estado inicial');
+        // LIMPEZA DE CREDENCIAIS DESABILITADA - Mantendo integração com API
+        // console.log('Iniciando limpeza das credenciais antigas...');
+        // await AuthService.clearAllData();
+        // console.log('Credenciais antigas removidas - app resetado para estado inicial');
 
         // Inicializar permissões de notificação
         await NotificationService.requestPermissions();
