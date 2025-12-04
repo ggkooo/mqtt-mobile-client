@@ -43,7 +43,7 @@ const MQTTSettingsScreen = ({ navigation }) => {
         setConfig(JSON.parse(savedConfig));
       }
     } catch (error) {
-      console.error('Erro ao carregar configuração MQTT:', error);
+      // Silent fail - defaults will be used
     }
   };
 
@@ -51,7 +51,7 @@ const MQTTSettingsScreen = ({ navigation }) => {
     try {
       await AsyncStorage.setItem(MQTT_CONFIG_KEY, JSON.stringify(newConfig));
     } catch (error) {
-      console.error('Erro ao salvar configuração MQTT:', error);
+      // Silent fail
     }
   };
 
