@@ -48,10 +48,10 @@ class NotificationService {
         return;
       }
 
-      const title = success ? 'Ação Executada!' : 'Falha na Execução';
+      const title = success ? 'Action Executed!' : 'Execution Failed';
       const body = success
-        ? `A ação "${actionName}" foi executada com sucesso.`
-        : `Falha ao executar a ação "${actionName}".`;
+        ? `Action "${actionName}" was executed successfully.`
+        : `Failed to execute action "${actionName}".`;
 
       await Notifications.scheduleNotificationAsync({
         content: {
@@ -81,8 +81,8 @@ class NotificationService {
         return;
       }
 
-      const title = 'Erro de Conexão MQTT';
-      let body = 'Não foi possível conectar ao broker MQTT. Verifique suas configurações.';
+      const title = 'MQTT Connection Error';
+      let body = 'Could not connect to MQTT broker. Check your settings.';
 
       if (errorMessage && typeof errorMessage === 'string') {
         body = errorMessage.length > 100
