@@ -6,7 +6,6 @@ import {
   Image,
   Alert,
   Platform,
-  TouchableOpacity,
   KeyboardAvoidingView,
   ScrollView,
 } from 'react-native';
@@ -16,44 +15,26 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AuthService from '../services/AuthService';
 import { useAuth } from '../context/AuthContext';
 
-const LoginScreen = ({ navigation }) => {
+const LoginScreen = () => {
   const { login } = useAuth();
-  const [username, setUsername] = useState('admin'); // Pré-preenchido com credencial padrão
-  const [password, setPassword] = useState('1234');  // Pré-preenchido com credencial padrão
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
-  const [biometricTypes, setBiometricTypes] = useState([]);
   const [passwordVisible, setPasswordVisible] = useState(false);
-  const [isFirstTime, setIsFirstTime] = useState(true);
 
   useEffect(() => {
     checkBiometricAvailability();
     loadBiometricPreference();
-    checkIfFirstTime();
   }, []);
-
-  const checkIfFirstTime = async () => {
-    try {
-      const hasCredentials = await AuthService.getStoredCredentials();
-      setIsFirstTime(!hasCredentials);
-    } catch (error) {
-      console.error('Erro ao verificar primeiro acesso:', error);
-      setIsFirstTime(true);
-    }
-  };
 
   const checkBiometricAvailability = async () => {
     try {
       const biometricCheck = await AuthService.isBiometricAvailable();
       setBiometricAvailable(biometricCheck.available);
-
-      if (biometricCheck.available) {
-        const types = await AuthService.getAvailableAuthenticationTypes();
-        setBiometricTypes(types);
-      }
     } catch (error) {
-      console.error('Erro ao verificar biometria:', error);
+      // Falha silenciosa
     }
   };
 
@@ -62,36 +43,21 @@ const LoginScreen = ({ navigation }) => {
       const enabled = await AuthService.isBiometricEnabled();
       setBiometricEnabled(enabled);
     } catch (error) {
-      console.error('Erro ao carregar preferência biométrica:', error);
+      // Falha silenciosa
     }
   };
 
   const handleBiometricToggle = async (value) => {
+    setBiometricEnabled(value);
     try {
-      setBiometricEnabled(value);
       await AuthService.setBiometricEnabled(value);
     } catch (error) {
-      Alert.alert('Erro', 'Não foi possível alterar a configuração de biometria');
+      // Falha silenciosa, reverter estado
       setBiometricEnabled(!value);
     }
   };
 
-  const handleBiometricLogin = async () => {
-    try {
-      setLoading(true);
-      const result = await AuthService.authenticateWithBiometrics();
 
-      if (result.success) {
-        login(); // Atualiza o contexto de autenticação
-      } else {
-        Alert.alert('Erro', result.error || 'Falha na autenticação biométrica');
-      }
-    } catch (error) {
-      Alert.alert('Erro', 'Erro inesperado na autenticação biométrica');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
@@ -104,66 +70,28 @@ const LoginScreen = ({ navigation }) => {
       const result = await AuthService.loginWithCredentials(username.trim(), password);
 
       if (result.success) {
-        if (result.firstTime) {
-          // PRIMEIRO LOGIN - mostrar opção para ativar biometria
-          if (biometricAvailable) {
-            Alert.alert(
-              'Bem-vindo!',
-              'Login realizado com sucesso! Deseja ativar a autenticação biométrica para próximos acessos?',
-              [
-                {
-                  text: 'Não, obrigado',
-                  style: 'cancel',
-                  onPress: () => login()
-                },
-                {
-                  text: 'Sim, ativar',
-                  onPress: async () => {
-                    try {
-                      await AuthService.setBiometricEnabled(true);
-                      Alert.alert(
-                        'Biometria Ativada!',
-                        'A partir do próximo acesso, você poderá usar biometria para entrar no app.',
-                        [{ text: 'OK', onPress: () => login() }]
-                      );
-                    } catch (error) {
-                      Alert.alert('Erro', 'Não foi possível ativar a biometria');
-                      login();
-                    }
-                  }
-                }
-              ]
-            );
-          } else {
-            Alert.alert(
-              'Bem-vindo!',
-              'Login realizado com sucesso! Suas credenciais foram salvas com segurança.',
-              [{ text: 'OK', onPress: () => login() }]
-            );
+        // Configurar biometria baseado no status atual do switch
+        if (biometricAvailable && biometricEnabled) {
+          try {
+            await AuthService.setBiometricEnabled(true);
+          } catch (error) {
+            // Falha silenciosa
           }
-        } else {
-          // LOGIN SUBSEQUENTE - apenas entrar no app
-          login();
         }
+
+        // Login silencioso
+        login();
       } else {
-        Alert.alert('Erro', result.error || 'Falha no login');
+        Alert.alert('Erro', 'Credenciais inválidas');
       }
     } catch (error) {
-      Alert.alert('Erro', 'Erro inesperado no login');
+      Alert.alert('Erro', 'Tente novamente');
     } finally {
       setLoading(false);
     }
   };
 
-  const getBiometricText = () => {
-    if (!biometricAvailable) return '';
 
-    if (biometricTypes.length > 0) {
-      return `Usar ${biometricTypes.join(' ou ')}`;
-    }
-
-    return 'Usar Biometria';
-  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -189,13 +117,14 @@ const LoginScreen = ({ navigation }) => {
           {/* Formulário */}
           <View style={styles.formContainer}>
             <TextInput
-              label="Usuário"
+              label="Email"
               value={username}
               onChangeText={setUsername}
               mode="outlined"
               style={styles.input}
               autoCapitalize="none"
               autoCorrect={false}
+              keyboardType="email-address"
               disabled={loading}
               theme={{
                 colors: {
@@ -231,7 +160,7 @@ const LoginScreen = ({ navigation }) => {
               }}
             />
 
-            {/* Switch de Biometria - sempre aparece se disponível */}
+            {/* Switch de Biometria */}
             {biometricAvailable && (
               <View style={styles.biometricContainer}>
                 <View style={styles.biometricTextContainer}>
@@ -261,14 +190,6 @@ const LoginScreen = ({ navigation }) => {
             >
               Entrar
             </Button>
-
-            {/* Informação sobre primeiro acesso */}
-            <Text style={styles.infoText}>
-              {isFirstTime
-                ? "No primeiro acesso, suas credenciais serão salvas com segurança no dispositivo."
-                : "Digite suas credenciais para acessar o aplicativo."
-              }
-            </Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -347,41 +268,36 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
     marginBottom: 20,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 5,
   },
   biometricTextContainer: {
     flex: 1,
-    marginRight: 16,
   },
   biometricLabel: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#333',
-    fontWeight: '400',
-    marginBottom: 0,
+    marginBottom: 2,
   },
   button: {
-    marginBottom: 16,
+    marginTop: 10,
+    marginBottom: 20,
     paddingVertical: 8,
-    backgroundColor: '#8E8E93',
-  },
-  biometricButton: {
-    backgroundColor: '#34C759',
+    borderRadius: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
   },
   buttonText: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  infoText: {
-    fontSize: 12,
-    color: '#666',
-    textAlign: 'center',
-    marginTop: 20,
-    lineHeight: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
 });
 
