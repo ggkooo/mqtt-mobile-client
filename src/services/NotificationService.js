@@ -3,7 +3,6 @@ import { Platform } from 'react-native';
 
 class NotificationService {
   constructor() {
-    // Configurar como as notificações devem ser tratadas quando a app estiver em foreground
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
         shouldShowAlert: true,
@@ -13,7 +12,6 @@ class NotificationService {
     });
   }
 
-  // Solicitar permissões de notificação
   async requestPermissions() {
     try {
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
@@ -25,11 +23,9 @@ class NotificationService {
       }
 
       if (finalStatus !== 'granted') {
-        console.log('Permissão de notificação negada');
         return false;
       }
 
-      // Configuração específica para Android
       if (Platform.OS === 'android') {
         await Notifications.setNotificationChannelAsync('default', {
           name: 'default',
@@ -41,17 +37,14 @@ class NotificationService {
 
       return true;
     } catch (error) {
-      console.error('Erro ao solicitar permissões de notificação:', error);
       return false;
     }
   }
 
-  // Enviar notificação local quando uma ação for executada
   async sendActionNotification(actionName, success = true) {
     try {
       const hasPermission = await this.requestPermissions();
       if (!hasPermission) {
-        console.log('Sem permissão para enviar notificações');
         return;
       }
 
@@ -67,35 +60,30 @@ class NotificationService {
           sound: 'default',
           priority: Notifications.AndroidNotificationPriority.HIGH,
           color: '#8E8E93',
-          icon: './assets/notification-logo.png', // Logo personalizada do app
+          icon: './assets/notification-logo.png',
         },
-        trigger: null, // Enviar imediatamente
+        trigger: null,
       });
 
-      console.log(`Notificação enviada: ${title} - ${body}`);
     } catch (error) {
-      console.error('Erro ao enviar notificação:', error);
+      // Silent fail
     }
   }
 
-  // Enviar notificação de erro de conexão MQTT
   async sendMQTTNotification(isConnected, errorMessage = null) {
     try {
-      // Só enviar notificação em caso de erro/desconexão
       if (isConnected) {
-        return; // Não notificar conexões bem-sucedidas
+        return;
       }
 
       const hasPermission = await this.requestPermissions();
       if (!hasPermission) {
-        console.log('Sem permissão para enviar notificações');
         return;
       }
 
       const title = 'Erro de Conexão MQTT';
       let body = 'Não foi possível conectar ao broker MQTT. Verifique suas configurações.';
 
-      // Se há uma mensagem de erro específica, usa ela
       if (errorMessage && typeof errorMessage === 'string') {
         body = errorMessage.length > 100
           ? errorMessage.substring(0, 97) + '...'
@@ -108,28 +96,24 @@ class NotificationService {
           body,
           sound: 'default',
           color: '#8E8E93',
-          icon: './assets/notification-logo.png', // Logo personalizada do app
+          icon: './assets/notification-logo.png',
         },
         trigger: null,
       });
 
-      console.log(`Notificação MQTT enviada: ${title} - ${body}`);
     } catch (error) {
-      console.error('Erro ao enviar notificação MQTT:', error);
+      // Silent fail
     }
   }
 
-  // Cancelar todas as notificações
   async cancelAllNotifications() {
     try {
       await Notifications.cancelAllScheduledNotificationsAsync();
-      console.log('Todas as notificações canceladas');
     } catch (error) {
-      console.error('Erro ao cancelar notificações:', error);
+      // Silent fail
     }
   }
 
-  // Obter badge count (apenas iOS)
   async getBadgeCount() {
     if (Platform.OS === 'ios') {
       return await Notifications.getBadgeCountAsync();
@@ -137,7 +121,6 @@ class NotificationService {
     return 0;
   }
 
-  // Definir badge count (apenas iOS)
   async setBadgeCount(count) {
     if (Platform.OS === 'ios') {
       await Notifications.setBadgeCountAsync(count);
@@ -145,5 +128,4 @@ class NotificationService {
   }
 }
 
-// Exportar instância singleton
 export default new NotificationService();
