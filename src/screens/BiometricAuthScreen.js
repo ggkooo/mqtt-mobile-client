@@ -5,7 +5,6 @@ import {
   StyleSheet,
   Image,
   Alert,
-  TouchableOpacity,
 } from 'react-native';
 import { Button } from 'react-native-paper';
 import { StatusBar } from 'expo-status-bar';
@@ -33,7 +32,7 @@ const BiometricAuthScreen = ({ navigation }) => {
       const types = await AuthService.getAvailableAuthenticationTypes();
       setBiometricTypes(types);
     } catch (error) {
-      console.error('Erro ao carregar tipos biométricos:', error);
+      // Falha silenciosa - não é crítico para o funcionamento
     }
   };
 
@@ -43,11 +42,8 @@ const BiometricAuthScreen = ({ navigation }) => {
       const result = await AuthService.authenticateWithBiometrics();
 
       if (result.success) {
-        console.log('Autenticação biométrica bem-sucedida');
         login();
       } else {
-        console.log('Falha na autenticação biométrica:', result.error);
-
         // Verificar se é cancelamento do sistema ou usuário
         if (result.error && (
           result.error.includes('system_cancel') ||
@@ -55,7 +51,6 @@ const BiometricAuthScreen = ({ navigation }) => {
           result.error.includes('cancelada') ||
           result.error.includes('cancelled')
         )) {
-          console.log('Autenticação cancelada pelo sistema ou usuário');
           // Não faz nada - deixa o usuário tentar novamente manualmente
           return;
         }
@@ -65,20 +60,17 @@ const BiometricAuthScreen = ({ navigation }) => {
         if (retryCount >= 2) {
           // Após 3 tentativas, oferecer login com senha
           Alert.alert(
-            'Autenticação Falhou',
-            'Muitas tentativas de autenticação biométrica falharam. Deseja fazer login com senha?',
+            'Erro de Autenticação',
+            'Deseja tentar novamente?',
             [
-              { text: 'Tentar Novamente', onPress: () => setRetryCount(0) },
-              { text: 'Usar Senha', onPress: handleLoginWithPassword }
+              { text: 'Sim', onPress: () => setRetryCount(0) },
+              { text: 'Cancelar', onPress: handleLoginWithPassword }
             ]
           );
-        } else {
-          Alert.alert('Erro', result.error || 'Falha na autenticação biométrica');
         }
       }
     } catch (error) {
-      console.error('Erro inesperado na autenticação biométrica:', error);
-      Alert.alert('Erro', 'Erro inesperado na autenticação biométrica');
+      Alert.alert('Erro', 'Tente novamente');
     } finally {
       setLoading(false);
     }
@@ -144,15 +136,6 @@ const BiometricAuthScreen = ({ navigation }) => {
           >
             Autenticar
           </Button>
-
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={handleLoginWithPassword}
-          >
-            <Text style={styles.secondaryButtonText}>
-              Usar senha
-            </Text>
-          </TouchableOpacity>
         </View>
       </View>
     </SafeAreaView>
@@ -247,17 +230,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#FFFFFF',
-  },
-  secondaryButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-  },
-  secondaryButtonText: {
-    fontSize: 16,
-    color: '#666',
-    fontWeight: '500',
   },
 });
 
