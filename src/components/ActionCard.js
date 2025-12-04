@@ -12,24 +12,24 @@ const ActionCard = ({ action, onEdit, onDelete, isMultiColumn = false }) => {
   const executeAction = async (payload = null, payloadName = null) => {
     try {
       if (!MQTTService.isConnected) {
-        // Enviar notificação de falha
+        // Send failure notification
         const actionDescription = payloadName ? `${action.name} - ${payloadName}` : action.name;
         await NotificationService.sendActionNotification(actionDescription, false);
         return;
       }
 
-      // Usa payload específico ou payload padrão da ação
+      // Use specific payload or default action payload
       const payloadToSend = payload || action.payload;
 
       await MQTTService.publish(action.topic, payloadToSend);
 
-      // Enviar apenas notificação de sucesso (sem modal)
-      // Se tem payloadName (múltiplos payloads), inclui na descrição
+      // Send only success notification (no modal)
+      // If has payloadName (multiple payloads), include in description
       const actionDescription = payloadName ? `${action.name} - ${payloadName}` : action.name;
       await NotificationService.sendActionNotification(actionDescription, true);
 
     } catch (error) {
-      // Enviar apenas notificação de falha (sem modal)
+      // Send only failure notification (no modal)
       const actionDescription = payloadName ? `${action.name} - ${payloadName}` : action.name;
       await NotificationService.sendActionNotification(actionDescription, false);
     }
@@ -38,11 +38,11 @@ const ActionCard = ({ action, onEdit, onDelete, isMultiColumn = false }) => {
   const handleDelete = () => {
     setShowMenu(false);
     Alert.alert(
-      'Confirmar Exclusão',
-      `Tem certeza que deseja excluir a ação "${action.name}"?`,
+      'Confirm Deletion',
+      `Are you sure you want to delete the action "${action.name}"?`,
       [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Excluir', style: 'destructive', onPress: () => onDelete(action.id) }
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => onDelete(action.id) }
       ]
     );
   };
@@ -54,12 +54,12 @@ const ActionCard = ({ action, onEdit, onDelete, isMultiColumn = false }) => {
 
   const toggleMenu = () => {
     if (!showMenu) {
-      // Calcular posição do botão antes de mostrar o modal
+      // Calculate button position before showing modal
       if (menuButtonRef.current) {
         menuButtonRef.current.measure((fx, fy, width, height, px, py) => {
           setMenuPosition({
-            x: px - 120, // Posicionar o modal à esquerda do botão
-            y: py + height + 5, // Posicionar abaixo do botão com um pequeno espaçamento
+            x: px - 120, // Position modal to the left of button
+            y: py + height + 5, // Position below button with small spacing
           });
           setShowMenu(true);
         });
@@ -97,9 +97,9 @@ const ActionCard = ({ action, onEdit, onDelete, isMultiColumn = false }) => {
         </View>
       </View>
 
-      {/* Botões de execução */}
+      {/* Execution buttons */}
       {action.payloads && action.payloads.length > 0 ? (
-        // Múltiplos botões para múltiplos payloads
+        // Multiple buttons for multiple payloads
         <View style={styles.multipleActionsContainer}>
           {action.payloads.map((payload) => (
             <TouchableOpacity
@@ -114,10 +114,10 @@ const ActionCard = ({ action, onEdit, onDelete, isMultiColumn = false }) => {
           ))}
         </View>
       ) : (
-        // Botão único para payload simples
+        // Single button for simple payload
         <TouchableOpacity style={[styles.executeButton, isMultiColumn && styles.multiColumnExecuteButton]} onPress={() => executeAction()}>
           <Text style={[styles.executeButtonText, isMultiColumn && styles.multiColumnExecuteButtonText]}>
-            Executar
+            Execute
           </Text>
         </TouchableOpacity>
       )}
@@ -143,12 +143,12 @@ const ActionCard = ({ action, onEdit, onDelete, isMultiColumn = false }) => {
           ]}>
             <TouchableOpacity style={styles.menuItem} onPress={handleEdit}>
               <Ionicons name="pencil" size={20} color="#8E8E93" />
-              <Text style={styles.menuItemText}>Editar</Text>
+              <Text style={styles.menuItemText}>Edit</Text>
             </TouchableOpacity>
             <View style={styles.menuDivider} />
             <TouchableOpacity style={styles.menuItem} onPress={handleDelete}>
               <Ionicons name="trash" size={20} color="#FF6B6B" />
-              <Text style={[styles.menuItemText, { color: '#FF6B6B' }]}>Excluir</Text>
+              <Text style={[styles.menuItemText, { color: '#FF6B6B' }]}>Delete</Text>
             </TouchableOpacity>
           </View>
         </Pressable>
