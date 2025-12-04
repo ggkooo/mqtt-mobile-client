@@ -61,7 +61,7 @@ const LoginScreen = () => {
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
-      Alert.alert('Erro', 'Por favor, preencha todos os campos');
+      Alert.alert('Error', 'Please fill in all fields');
       return;
     }
 
@@ -70,22 +70,22 @@ const LoginScreen = () => {
       const result = await AuthService.loginWithCredentials(username.trim(), password);
 
       if (result.success) {
-        // Configurar biometria baseado no status atual do switch
+        // Configure biometrics based on current switch status
         if (biometricAvailable && biometricEnabled) {
           try {
             await AuthService.setBiometricEnabled(true);
           } catch (error) {
-            // Falha silenciosa
+            // Silent fail
           }
         }
 
-        // Login silencioso
+        // Silent login
         login();
       } else {
-        Alert.alert('Erro', 'Credenciais inválidas');
+        Alert.alert('Error', 'Invalid credentials');
       }
     } catch (error) {
-      Alert.alert('Erro', 'Tente novamente');
+      Alert.alert('Error', 'Try again');
     } finally {
       setLoading(false);
     }
@@ -137,7 +137,7 @@ const LoginScreen = () => {
             />
 
             <TextInput
-              label="Senha"
+              label="Password"
               value={password}
               onChangeText={setPassword}
               mode="outlined"
@@ -160,12 +160,12 @@ const LoginScreen = () => {
               }}
             />
 
-            {/* Switch de Biometria */}
+            {/* Biometry Switch */}
             {biometricAvailable && (
               <View style={styles.biometricContainer}>
                 <View style={styles.biometricTextContainer}>
                   <Text style={styles.biometricLabel}>
-                    Utilizar biometria para futuros acessos
+                    Use biometry for future logins
                   </Text>
                 </View>
                 <Switch
@@ -178,7 +178,7 @@ const LoginScreen = () => {
               </View>
             )}
 
-            {/* Botão de Login */}
+            {/* Login Button */}
             <Button
               mode="contained"
               onPress={handleLogin}
@@ -188,7 +188,7 @@ const LoginScreen = () => {
               labelStyle={styles.buttonText}
               buttonColor="#8E8E93"
             >
-              Entrar
+              Login
             </Button>
           </View>
         </ScrollView>
