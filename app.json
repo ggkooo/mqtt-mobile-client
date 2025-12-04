@@ -13,7 +13,10 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Este aplicativo usa Face ID para autenticação biométrica e acesso seguro às suas configurações."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -24,14 +27,10 @@
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
-        "com.android.vending.BILLING"
-      ],
-      "usesCleartextTraffic": true,
-      "notification": {
-        "icon": "./assets/notification-logo.png",
-        "color": "#8E8E93",
-        "iosDisplayInForeground": true
-      }
+        "com.android.vending.BILLING",
+        "USE_FINGERPRINT",
+        "USE_BIOMETRIC"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
