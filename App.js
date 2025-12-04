@@ -20,22 +20,13 @@ const AppNavigator = () => {
   const { isAuthenticated, isLoading, needsBiometricAuth } = useAuth();
 
   useEffect(() => {
-    // Inicialização do app
     const initializeApp = async () => {
       try {
-        // LIMPEZA DE CREDENCIAIS DESABILITADA - Mantendo integração com API
-        // console.log('Iniciando limpeza das credenciais antigas...');
-        // await AuthService.clearAllData();
-        // console.log('Credenciais antigas removidas - app resetado para estado inicial');
-
-        // Inicializar permissões de notificação
         await NotificationService.requestPermissions();
 
-        // Tentar inicializar conexão MQTT automática
-        console.log('Tentando inicialização MQTT automática...');
         await MQTTService.initializeOnStartup();
       } catch (error) {
-        console.error('Erro na inicialização do app:', error);
+        // Silent fail
       }
     };
 
