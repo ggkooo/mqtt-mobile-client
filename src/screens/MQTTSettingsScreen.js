@@ -64,34 +64,34 @@ const MQTTSettingsScreen = ({ navigation }) => {
 
   const validateConfig = () => {
     if (!config.brokerHost.trim()) {
-      Alert.alert('Erro', 'Endereço do broker é obrigatório');
+      Alert.alert('Error', 'Broker address is required');
       return false;
     }
     if (!config.brokerPort.trim()) {
-      Alert.alert('Erro', 'Porta do broker é obrigatória');
+      Alert.alert('Error', 'Broker port is required');
       return false;
     }
     if (isNaN(config.brokerPort) || config.brokerPort < 1 || config.brokerPort > 65535) {
-      Alert.alert('Erro', 'Porta deve ser um número entre 1 e 65535');
+      Alert.alert('Error', 'Port must be a number between 1 and 65535');
       return false;
     }
 
-    // Avisar sobre portas comuns que não são WebSocket
+    // Warn about common ports that are not WebSocket
     const port = parseInt(config.brokerPort);
     if (port === 1883) {
       Alert.alert(
-        'Aviso sobre Porta',
-        'A porta 1883 é para MQTT TCP, não WebSocket. Para React Native/Expo, use portas WebSocket como:\n\n• 8080 (comum para WebSocket MQTT)\n• 8000 (HiveMQ público)\n• 9001 (Mosquitto WebSocket padrão)\n• 8083 (MQTT over WebSocket seguro)\n\nContinuar mesmo assim?',
+        'Port Warning',
+        'Port 1883 is for MQTT TCP, not WebSocket. For React Native/Expo, use WebSocket ports like:\n\n• 8080 (common for WebSocket MQTT)\n• 8000 (HiveMQ public)\n• 9001 (Mosquitto WebSocket default)\n• 8083 (MQTT over secure WebSocket)\n\nContinue anyway?',
         [
-          { text: 'Cancelar', style: 'cancel' },
-          { text: 'Continuar', style: 'default' }
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Continue', style: 'default' }
         ]
       );
       return false;
     }
 
     if (config.useAuth && (!config.username.trim() || !config.password.trim())) {
-      Alert.alert('Erro', 'Usuário e senha são obrigatórios quando autenticação está ativa');
+      Alert.alert('Error', 'Username and password are required when authentication is active');
       return false;
     }
     return true;
@@ -115,15 +115,15 @@ const MQTTSettingsScreen = ({ navigation }) => {
         config.useAuth ? config.username : null,
         config.useAuth ? config.password : null,
         {
-          forceProtocol: config.protocol // Força o protocolo selecionado pelo usuário
+          forceProtocol: config.protocol // Force protocol selected by user
         }
       );
 
       setIsConnected(true);
-      Alert.alert('Sucesso', 'Conectado ao broker MQTT com sucesso!');
+      Alert.alert('Success', 'Connected to MQTT broker successfully!');
     } catch (error) {
       setIsConnected(false);
-      Alert.alert('Erro', `Falha na conexão: ${error.message || 'Erro desconhecido'}`);
+      Alert.alert('Error', `Connection failed: ${error.message || 'Unknown error'}`);
     } finally {
       setConnecting(false);
     }
@@ -132,24 +132,24 @@ const MQTTSettingsScreen = ({ navigation }) => {
   const handleDisconnect = () => {
     MQTTService.disconnect();
     setIsConnected(false);
-    Alert.alert('Info', 'Desconectado do broker MQTT');
+    Alert.alert('Info', 'Disconnected from MQTT broker');
   };
 
   const testConnection = async () => {
     if (!isConnected) {
-      Alert.alert('Aviso', 'Conecte-se ao broker primeiro');
+      Alert.alert('Warning', 'Connect to broker first');
       return;
     }
 
     try {
       await MQTTService.testConnection();
       Alert.alert(
-        'Teste Bem-sucedido!',
-        'Mensagem de teste enviada com sucesso para o broker MQTT!',
+        'Test Successful!',
+        'Test message sent successfully to MQTT broker!',
         [{ text: 'OK' }]
       );
     } catch (error) {
-      Alert.alert('Erro no Teste', `Falha no teste: ${error.message}`);
+      Alert.alert('Test Error', `Test failed: ${error.message}`);
     }
   };
 
@@ -170,21 +170,21 @@ const MQTTSettingsScreen = ({ navigation }) => {
               />
             </View>
             <Text style={styles.statusText}>
-              {isConnected ? 'Conectado' : 'Desconectado'}
+              {isConnected ? 'Connected' : 'Disconnected'}
             </Text>
           </View>
 
-          {/* Configurações do broker */}
+          {/* Broker settings */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Configurações do Broker</Text>
+            <Text style={styles.sectionTitle}>Broker Settings</Text>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Endereço do Broker *</Text>
+              <Text style={styles.label}>Broker Address *</Text>
               <TextInput
                 style={styles.input}
                 value={config.brokerHost}
                 onChangeText={(value) => handleInputChange('brokerHost', value)}
-                placeholder="Ex: broker.hivemq.com"
+                placeholder="e.g., broker.hivemq.com"
                 placeholderTextColor="#999"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -192,7 +192,7 @@ const MQTTSettingsScreen = ({ navigation }) => {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Porta *</Text>
+              <Text style={styles.label}>Port *</Text>
               <TextInput
                 style={styles.input}
                 value={config.brokerPort}
@@ -204,7 +204,7 @@ const MQTTSettingsScreen = ({ navigation }) => {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Protocolo WebSocket *</Text>
+              <Text style={styles.label}>WebSocket Protocol *</Text>
               <View style={styles.protocolContainer}>
                 <TouchableOpacity
                   style={[
@@ -223,7 +223,7 @@ const MQTTSettingsScreen = ({ navigation }) => {
                     styles.protocolDescription,
                     config.protocol === 'ws' && styles.protocolDescriptionActive
                   ]}>
-                    Não seguro
+                    Not secure
                   </Text>
                 </TouchableOpacity>
 
@@ -244,7 +244,7 @@ const MQTTSettingsScreen = ({ navigation }) => {
                     styles.protocolDescription,
                     config.protocol === 'wss' && styles.protocolDescriptionActive
                   ]}>
-                    Seguro (SSL)
+                    Secure (SSL)
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -258,30 +258,30 @@ const MQTTSettingsScreen = ({ navigation }) => {
                 />
                 <Text style={styles.protocolInfoText}>
                   {config.protocol === 'ws'
-                    ? 'Conexão não criptografada. Use para desenvolvimento local.'
-                    : 'Conexão criptografada com SSL/TLS. Recomendado para produção.'
+                    ? 'Unencrypted connection. Use for local development.'
+                    : 'Encrypted connection with SSL/TLS. Recommended for production.'
                   }
                 </Text>
               </View>
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Client ID (opcional)</Text>
+              <Text style={styles.label}>Client ID (optional)</Text>
               <TextInput
                 style={styles.input}
                 value={config.clientId}
                 onChangeText={(value) => handleInputChange('clientId', value)}
-                placeholder="Deixe vazio para gerar automaticamente"
+                placeholder="Leave empty to auto-generate"
                 placeholderTextColor="#999"
                 autoCapitalize="none"
               />
             </View>
           </View>
 
-          {/* Autenticação */}
+          {/* Authentication */}
           <View style={styles.section}>
             <View style={styles.authHeader}>
-              <Text style={styles.sectionTitle}>Autenticação</Text>
+              <Text style={styles.sectionTitle}>Authentication</Text>
               <Switch
                 value={config.useAuth}
                 onValueChange={(value) => handleInputChange('useAuth', value)}
@@ -293,12 +293,12 @@ const MQTTSettingsScreen = ({ navigation }) => {
             {config.useAuth && (
               <>
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Usuário *</Text>
+                  <Text style={styles.label}>Username *</Text>
                   <TextInput
                     style={styles.input}
                     value={config.username}
                     onChangeText={(value) => handleInputChange('username', value)}
-                    placeholder="Nome de usuário"
+                    placeholder="Username"
                     placeholderTextColor="#999"
                     autoCapitalize="none"
                     autoCorrect={false}
@@ -306,12 +306,12 @@ const MQTTSettingsScreen = ({ navigation }) => {
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Senha *</Text>
+                  <Text style={styles.label}>Password *</Text>
                   <TextInput
                     style={styles.input}
                     value={config.password}
                     onChangeText={(value) => handleInputChange('password', value)}
-                    placeholder="Senha"
+                    placeholder="Password"
                     placeholderTextColor="#999"
                     secureTextEntry
                   />
@@ -320,7 +320,7 @@ const MQTTSettingsScreen = ({ navigation }) => {
             )}
           </View>
 
-          {/* Botões de ação */}
+          {/* Action buttons */}
           <View style={styles.buttonContainer}>
             {!isConnected ? (
               <TouchableOpacity
@@ -329,7 +329,7 @@ const MQTTSettingsScreen = ({ navigation }) => {
                 disabled={connecting}
               >
                 <Text style={styles.connectButtonText}>
-                  {connecting ? 'Conectando...' : 'Conectar'}
+                  {connecting ? 'Connecting...' : 'Connect'}
                 </Text>
               </TouchableOpacity>
             ) : (
@@ -339,30 +339,30 @@ const MQTTSettingsScreen = ({ navigation }) => {
                   onPress={testConnection}
                 >
                   <Ionicons name="send" size={16} color="#fff" />
-                  <Text style={styles.testButtonText}>Testar</Text>
+                  <Text style={styles.testButtonText}>Test</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={styles.disconnectButton}
                   onPress={handleDisconnect}
                 >
-                  <Text style={styles.disconnectButtonText}>Desconectar</Text>
+                  <Text style={styles.disconnectButtonText}>Disconnect</Text>
                 </TouchableOpacity>
               </View>
             )}
           </View>
 
-          {/* Informações */}
+          {/* Information */}
           <View style={styles.infoSection}>
-            <Text style={styles.infoTitle}>Configuração do Protocolo</Text>
+            <Text style={styles.infoTitle}>Protocol Configuration</Text>
             <Text style={styles.infoText}>
-              <Text style={{fontWeight: 'bold'}}>ws://</Text> - Conexão não criptografada para desenvolvimento
+              <Text style={{fontWeight: 'bold'}}>ws://</Text> - Unencrypted connection for development
             </Text>
             <Text style={styles.infoText}>
-              <Text style={{fontWeight: 'bold'}}>wss://</Text> - Conexão segura com SSL/TLS para produção
+              <Text style={{fontWeight: 'bold'}}>wss://</Text> - Secure connection with SSL/TLS for production
             </Text>
             <Text style={styles.infoText}>
-              💡 Escolha o protocolo adequado para seu ambiente e broker MQTT
+              💡 Choose the appropriate protocol for your environment and MQTT broker
             </Text>
           </View>
         </View>
