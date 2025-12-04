@@ -14,31 +14,31 @@ import { Ionicons } from '@expo/vector-icons';
 import StorageService from '../services/StorageService';
 
 const ICON_OPTIONS = [
-  { name: 'flash', label: 'Raio' },
-  { name: 'bulb', label: 'Lâmpada' },
-  { name: 'home', label: 'Casa' },
-  { name: 'thermometer', label: 'Temperatura' },
-  { name: 'water', label: 'Água' },
-  { name: 'car', label: 'Carro' },
-  { name: 'camera', label: 'Câmera' },
+  { name: 'flash', label: 'Lightning' },
+  { name: 'bulb', label: 'Bulb' },
+  { name: 'home', label: 'Home' },
+  { name: 'thermometer', label: 'Temperature' },
+  { name: 'water', label: 'Water' },
+  { name: 'car', label: 'Car' },
+  { name: 'camera', label: 'Camera' },
   { name: 'tv', label: 'TV' },
-  { name: 'musical-notes', label: 'Som' },
-  { name: 'lock-closed', label: 'Tranca' },
+  { name: 'musical-notes', label: 'Sound' },
+  { name: 'lock-closed', label: 'Lock' },
 ];
 
 const COLOR_OPTIONS = [
-  { color: '#4CAF50', label: 'Verde' },
-  { color: '#2196F3', label: 'Azul' },
-  { color: '#FF9800', label: 'Laranja' },
-  { color: '#F44336', label: 'Vermelho' },
-  { color: '#9C27B0', label: 'Roxo' },
-  { color: '#607D8B', label: 'Azul Acinzentado' },
-  { color: '#795548', label: 'Marrom' },
-  { color: '#FFC107', label: 'Amarelo' },
-  { color: '#E91E63', label: 'Rosa' },
-  { color: '#00BCD4', label: 'Ciano' },
-  { color: '#FF5722', label: 'Laranja Escuro' },
-  { color: '#3F51B5', label: 'Índigo' },
+  { color: '#4CAF50', label: 'Green' },
+  { color: '#2196F3', label: 'Blue' },
+  { color: '#FF9800', label: 'Orange' },
+  { color: '#F44336', label: 'Red' },
+  { color: '#9C27B0', label: 'Purple' },
+  { color: '#607D8B', label: 'Blue Grey' },
+  { color: '#795548', label: 'Brown' },
+  { color: '#FFC107', label: 'Yellow' },
+  { color: '#E91E63', label: 'Pink' },
+  { color: '#00BCD4', label: 'Cyan' },
+  { color: '#FF5722', label: 'Deep Orange' },
+  { color: '#3F51B5', label: 'Indigo' },
 ];
 
 const AddActionScreen = ({ navigation, route }) => {
@@ -51,8 +51,8 @@ const AddActionScreen = ({ navigation, route }) => {
     topic: '',
     payload: '',
     icon: 'flash',
-    iconColor: '#4CAF50', // Verde como padrão
-    payloads: [], // Array de múltiplos payloads
+    iconColor: '#4CAF50', // Default green
+    payloads: [], // Array of multiple payloads
   });
 
   const [saving, setSaving] = useState(false);
@@ -76,11 +76,11 @@ const AddActionScreen = ({ navigation, route }) => {
       });
 
       navigation.setOptions({
-        title: 'Editar Ação',
+        title: 'Edit Action',
       });
     } else {
       navigation.setOptions({
-        title: 'Nova Ação',
+        title: 'New Action',
       });
     }
   }, [isEditing, editingAction, navigation]);
@@ -94,7 +94,7 @@ const AddActionScreen = ({ navigation, route }) => {
 
   const addPayload = () => {
     if (!newPayloadName.trim() || !newPayloadValue.trim()) {
-      Alert.alert('Erro', 'Nome e valor do payload são obrigatórios');
+      Alert.alert('Error', 'Payload name and value are required');
       return;
     }
 
@@ -124,14 +124,14 @@ const AddActionScreen = ({ navigation, route }) => {
     setUseMultiplePayloads(prev => {
       const newValue = !prev;
 
-      // Se mudando para payload único, limpa os múltiplos payloads
+      // If changing to single payload, clear multiple payloads
       if (!newValue) {
         setFormData(prevData => ({
           ...prevData,
           payloads: [],
         }));
       } else {
-        // Se mudando para múltiplos, limpa o payload único
+        // If changing to multiple, clear single payload
         setFormData(prevData => ({
           ...prevData,
           payload: '',
@@ -144,22 +144,22 @@ const AddActionScreen = ({ navigation, route }) => {
 
   const validateForm = () => {
     if (!formData.name.trim()) {
-      Alert.alert('Erro', 'Nome da ação é obrigatório');
+      Alert.alert('Error', 'Action name is required');
       return false;
     }
     if (!formData.topic.trim()) {
-      Alert.alert('Erro', 'Tópico MQTT é obrigatório');
+      Alert.alert('Error', 'MQTT topic is required');
       return false;
     }
 
     if (useMultiplePayloads) {
       if (formData.payloads.length === 0) {
-        Alert.alert('Erro', 'Adicione pelo menos um payload');
+        Alert.alert('Error', 'Add at least one payload');
         return false;
       }
     } else {
       if (!formData.payload.trim()) {
-        Alert.alert('Erro', 'Payload é obrigatório');
+        Alert.alert('Error', 'Payload is required');
         return false;
       }
     }
@@ -174,14 +174,14 @@ const AddActionScreen = ({ navigation, route }) => {
     try {
       if (isEditing) {
         await StorageService.updateAction(editingAction.id, formData);
-        Alert.alert('Sucesso', 'Ação atualizada com sucesso!');
+        Alert.alert('Success', 'Action updated successfully!');
       } else {
         await StorageService.addAction(formData);
-        Alert.alert('Sucesso', 'Ação criada com sucesso!');
+        Alert.alert('Success', 'Action created successfully!');
       }
       navigation.goBack();
     } catch (error) {
-      Alert.alert('Erro', 'Falha ao salvar ação');
+      Alert.alert('Error', 'Failed to save action');
     } finally {
       setSaving(false);
     }
@@ -240,48 +240,48 @@ const AddActionScreen = ({ navigation, route }) => {
     >
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
-          {/* Nome da ação */}
+          {/* Action name */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Nome da Ação *</Text>
+            <Text style={styles.label}>Action Name *</Text>
             <TextInput
               style={styles.input}
               value={formData.name}
               onChangeText={(value) => handleInputChange('name', value)}
-              placeholder="Ex: Acender luz do quarto"
+              placeholder="e.g., Turn on bedroom light"
               placeholderTextColor="#999"
             />
           </View>
 
-          {/* Descrição */}
+          {/* Description */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Descrição</Text>
+            <Text style={styles.label}>Description</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
               value={formData.description}
               onChangeText={(value) => handleInputChange('description', value)}
-              placeholder="Descrição opcional da ação"
+              placeholder="Optional action description"
               placeholderTextColor="#999"
               multiline
               numberOfLines={3}
             />
           </View>
 
-          {/* Tópico MQTT */}
+          {/* MQTT Topic */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Tópico MQTT *</Text>
+            <Text style={styles.label}>MQTT Topic *</Text>
             <TextInput
               style={styles.input}
               value={formData.topic}
               onChangeText={(value) => handleInputChange('topic', value)}
-              placeholder="Ex: casa/quarto/luz"
+              placeholder="e.g., home/bedroom/light"
               placeholderTextColor="#999"
               autoCapitalize="none"
             />
           </View>
 
-          {/* Tipo de Payload */}
+          {/* Payload Type */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Configuração de Payload</Text>
+            <Text style={styles.label}>Payload Configuration</Text>
             <View style={styles.payloadTypeContainer}>
               <TouchableOpacity
                 style={[styles.payloadTypeOption, !useMultiplePayloads && styles.selectedPayloadType]}
@@ -293,7 +293,7 @@ const AddActionScreen = ({ navigation, route }) => {
                   color={!useMultiplePayloads ? "#2196F3" : "#999"}
                 />
                 <Text style={[styles.payloadTypeText, !useMultiplePayloads && styles.selectedPayloadTypeText]}>
-                  Payload único
+                  Single payload
                 </Text>
               </TouchableOpacity>
 
@@ -307,19 +307,19 @@ const AddActionScreen = ({ navigation, route }) => {
                   color={useMultiplePayloads ? "#2196F3" : "#999"}
                 />
                 <Text style={[styles.payloadTypeText, useMultiplePayloads && styles.selectedPayloadTypeText]}>
-                  Múltiplos payloads
+                  Multiple payloads
                 </Text>
               </TouchableOpacity>
             </View>
             <Text style={styles.helperText}>
               {useMultiplePayloads
-                ? "Para dispositivos com várias opções (ex: Lâmpada ON/OFF/DIMMER)"
-                : "Para ações simples com um comando"
+                ? "For devices with multiple options (e.g., Light ON/OFF/DIMMER)"
+                : "For simple actions with one command"
               }
             </Text>
           </View>
 
-          {/* Payload Único */}
+          {/* Single Payload */}
           {!useMultiplePayloads && (
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Payload *</Text>
@@ -327,18 +327,18 @@ const AddActionScreen = ({ navigation, route }) => {
                 style={styles.input}
                 value={formData.payload}
                 onChangeText={(value) => handleInputChange('payload', value)}
-                placeholder="Ex: ON, OFF, 1, 0, etc."
+                placeholder="e.g., ON, OFF, 1, 0, etc."
                 placeholderTextColor="#999"
               />
             </View>
           )}
 
-          {/* Múltiplos Payloads */}
+          {/* Multiple Payloads */}
           {useMultiplePayloads && (
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Múltiplos Payloads *</Text>
+              <Text style={styles.label}>Multiple Payloads *</Text>
 
-              {/* Lista de payloads existentes */}
+              {/* List of existing payloads */}
               {formData.payloads.map((payload) => (
                 <View key={payload.id} style={styles.payloadItem}>
                   <View style={styles.payloadInfo}>
@@ -354,21 +354,21 @@ const AddActionScreen = ({ navigation, route }) => {
                 </View>
               ))}
 
-              {/* Formulário para adicionar novo payload */}
+              {/* Form to add new payload */}
               <View style={styles.addPayloadForm}>
                 <View style={styles.payloadInputRow}>
                   <TextInput
                     style={[styles.input, styles.payloadNameInput]}
                     value={newPayloadName}
                     onChangeText={setNewPayloadName}
-                    placeholder="Nome (ex: Ligar)"
+                    placeholder="Name (e.g., Turn On)"
                     placeholderTextColor="#999"
                   />
                   <TextInput
                     style={[styles.input, styles.payloadValueInput]}
                     value={newPayloadValue}
                     onChangeText={setNewPayloadValue}
-                    placeholder="Valor (ex: ON)"
+                    placeholder="Value (e.g., ON)"
                     placeholderTextColor="#999"
                   />
                 </View>
@@ -377,31 +377,31 @@ const AddActionScreen = ({ navigation, route }) => {
                   onPress={addPayload}
                 >
                   <Ionicons name="add" size={20} color="#fff" />
-                  <Text style={styles.addPayloadButtonText}>Adicionar Payload</Text>
+                  <Text style={styles.addPayloadButtonText}>Add Payload</Text>
                 </TouchableOpacity>
               </View>
             </View>
           )}
 
-          {/* Seleção de ícone */}
+          {/* Icon selection */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Ícone</Text>
+            <Text style={styles.label}>Icon</Text>
             <View style={styles.iconGrid}>
               {ICON_OPTIONS.map(renderIconOption)}
             </View>
           </View>
 
-          {/* Seleção de cor do ícone */}
+          {/* Icon color selection */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Cor do Ícone</Text>
+            <Text style={styles.label}>Icon Color</Text>
             <View style={styles.colorGrid}>
               {COLOR_OPTIONS.map(renderColorOption)}
             </View>
           </View>
 
-          {/* Preview da ação */}
+          {/* Action preview */}
           <View style={styles.previewSection}>
-            <Text style={styles.previewLabel}>Visualização</Text>
+            <Text style={styles.previewLabel}>Preview</Text>
             <View style={styles.previewCard}>
               <View style={styles.previewHeader}>
                 <View style={styles.previewIconContainer}>
@@ -409,10 +409,10 @@ const AddActionScreen = ({ navigation, route }) => {
                 </View>
                 <View style={styles.previewContent}>
                   <Text style={styles.previewTitle}>
-                    {formData.name || 'Nome da Ação'}
+                    {formData.name || 'Action Name'}
                   </Text>
                   <Text style={styles.previewSubtitle}>
-                    {formData.description || formData.topic || 'Tópico MQTT'}
+                    {formData.description || formData.topic || 'MQTT Topic'}
                   </Text>
                 </View>
               </View>
@@ -421,13 +421,13 @@ const AddActionScreen = ({ navigation, route }) => {
         </View>
       </ScrollView>
 
-      {/* Botões de ação */}
+      {/* Action buttons */}
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={styles.cancelButton}
           onPress={() => navigation.goBack()}
         >
-          <Text style={styles.cancelButtonText}>Cancelar</Text>
+          <Text style={styles.cancelButtonText}>Cancel</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.saveButton, saving && styles.disabledButton]}
@@ -435,7 +435,7 @@ const AddActionScreen = ({ navigation, route }) => {
           disabled={saving}
         >
           <Text style={styles.saveButtonText}>
-            {saving ? 'Salvando...' : (isEditing ? 'Atualizar' : 'Salvar')}
+            {saving ? 'Saving...' : (isEditing ? 'Update' : 'Save')}
           </Text>
         </TouchableOpacity>
       </View>
