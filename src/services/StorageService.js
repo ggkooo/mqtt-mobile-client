@@ -8,7 +8,6 @@ class StorageService {
     try {
       await AsyncStorage.setItem(ACTIONS_KEY, JSON.stringify(actions));
     } catch (error) {
-      console.error('Erro ao salvar ações:', error);
       throw error;
     }
   }
@@ -18,7 +17,6 @@ class StorageService {
       const actionsJson = await AsyncStorage.getItem(ACTIONS_KEY);
       return actionsJson ? JSON.parse(actionsJson) : [];
     } catch (error) {
-      console.error('Erro ao carregar ações:', error);
       return [];
     }
   }
@@ -35,7 +33,6 @@ class StorageService {
       await this.saveActions(actions);
       return newAction;
     } catch (error) {
-      console.error('Erro ao adicionar ação:', error);
       throw error;
     }
   }
@@ -51,7 +48,6 @@ class StorageService {
       }
       throw new Error('Ação não encontrada');
     } catch (error) {
-      console.error('Erro ao atualizar ação:', error);
       throw error;
     }
   }
@@ -62,7 +58,6 @@ class StorageService {
       const filteredActions = actions.filter(action => action.id !== actionId);
       await this.saveActions(filteredActions);
     } catch (error) {
-      console.error('Erro ao deletar ação:', error);
       throw error;
     }
   }
@@ -71,17 +66,14 @@ class StorageService {
     try {
       await AsyncStorage.removeItem(ACTIONS_KEY);
     } catch (error) {
-      console.error('Erro ao limpar ações:', error);
       throw error;
     }
   }
 
-  // Métodos para gerenciar preferência de layout
   async saveLayoutPreference(numColumns) {
     try {
       await AsyncStorage.setItem(LAYOUT_PREFERENCE_KEY, JSON.stringify(numColumns));
     } catch (error) {
-      console.error('Erro ao salvar preferência de layout:', error);
       throw error;
     }
   }
@@ -89,10 +81,9 @@ class StorageService {
   async loadLayoutPreference() {
     try {
       const preference = await AsyncStorage.getItem(LAYOUT_PREFERENCE_KEY);
-      return preference ? JSON.parse(preference) : 1; // Default: 1 coluna
+      return preference ? JSON.parse(preference) : 1;
     } catch (error) {
-      console.error('Erro ao carregar preferência de layout:', error);
-      return 1; // Default em caso de erro
+      return 1;
     }
   }
 }
