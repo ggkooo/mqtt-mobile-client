@@ -1,6 +1,7 @@
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL, API_KEY } from '@env';
 
 const AUTH_KEY = 'user_auth';
 const BIOMETRIC_ENABLED_KEY = 'biometric_enabled';
@@ -95,7 +96,6 @@ class AuthService {
         throw new Error('Autenticação biométrica não disponível');
       }
 
-      console.log('Iniciando autenticação biométrica...');
       const result = await LocalAuthentication.authenticateAsync({
         promptMessage: 'Autentique-se para acessar o app',
         cancelLabel: 'Cancelar',
@@ -103,23 +103,23 @@ class AuthService {
         disableDeviceFallback: false,
       });
 
-      console.log('Resultado da autenticação biométrica:', JSON.stringify(result, null, 2));
-
       if (result.success) {
         this.isAuthenticated = true;
         await AsyncStorage.setItem(AUTH_KEY, 'true');
-        console.log('Autenticação biométrica bem-sucedida');
-        return { success: true };
+
+        // Log do warning se existir, mas não bloquear o sucesso
+        if (result.warning) {
+          console.warn('Warning na autenticação biométrica:', result.warning);
+        }
+
+        return { success: true, warning: result.warning };
       } else {
         // Tratamento específico para diferentes tipos de erro
         let errorMessage = 'Autenticação cancelada';
         if (result.error) {
           errorMessage = result.error;
-        } else if (result.warning) {
-          errorMessage = result.warning;
         }
 
-        console.log('Falha na autenticação biométrica:', errorMessage);
         return { success: false, error: errorMessage };
       }
     } catch (error) {
@@ -128,30 +128,59 @@ class AuthService {
     }
   }
 
+  // Autentica com API externa
+  async authenticateWithAPI(username, password) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'API-KEY': API_KEY,
+        },
+        body: JSON.stringify({
+          email: username,
+          password: password,
+        }),
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        return { success: true, userData: userData };
+      } else {
+        return { success: false, error: 'Email ou senha inválidos' };
+      }
+    } catch (error) {
+      console.error('Erro de rede na autenticação via API:', error);
+      return { success: false, error: 'Erro de conexão com o servidor. Verifique sua internet.' };
+    }
+  }
+
   // Login com usuário e senha
   async loginWithCredentials(username, password) {
     try {
-      // Credenciais padrão do sistema
-      const DEFAULT_USERNAME = 'admin';
-      const DEFAULT_PASSWORD = '1234';
+      // AUTENTICAÇÃO EXCLUSIVA VIA API
+      const apiResult = await this.authenticateWithAPI(username, password);
 
-      // Verificar se são as credenciais padrão
-      if (username === DEFAULT_USERNAME && password === DEFAULT_PASSWORD) {
-        console.log('Login com credenciais padrão realizado');
+      if (apiResult.success) {
         this.isAuthenticated = true;
         await AsyncStorage.setItem(AUTH_KEY, 'true');
 
-        // Verificar se já tem credenciais salvas
+        // Verificar se é primeira vez (se não tem credenciais salvas)
         const storedCredentials = await this.getStoredCredentials();
         const isFirstTime = !storedCredentials;
 
-        // Salvar credenciais padrão
-        await this.saveCredentials(DEFAULT_USERNAME, DEFAULT_PASSWORD);
+        // Salvar credenciais do usuário autenticado via API
+        await this.saveCredentials(username, password);
 
-        return { success: true, firstTime: isFirstTime };
+        return {
+          success: true,
+          method: 'api',
+          userData: apiResult.userData,
+          firstTime: isFirstTime
+        };
       }
 
-      // Verificar credenciais armazenadas (para compatibilidade futura)
+      // Se API falhou, verificar se são credenciais já salvas localmente (para funcionamento offline)
       const storedCredentials = await this.getStoredCredentials();
 
       if (storedCredentials &&
@@ -159,19 +188,40 @@ class AuthService {
           storedCredentials.password === password) {
         this.isAuthenticated = true;
         await AsyncStorage.setItem(AUTH_KEY, 'true');
-        return { success: true };
-      } else if (!storedCredentials) {
-        // Primeira vez fazendo login com credenciais personalizadas
-        await this.saveCredentials(username, password);
-        this.isAuthenticated = true;
-        await AsyncStorage.setItem(AUTH_KEY, 'true');
-        return { success: true, firstTime: true };
-      } else {
-        return { success: false, error: 'Credenciais inválidas' };
+        return { success: true, method: 'stored' };
       }
+
+      // Se chegou até aqui, as credenciais são inválidas
+      return {
+        success: false,
+        error: 'Credenciais inválidas. Verifique seu email e senha.'
+      };
     } catch (error) {
-      console.error('Erro no login:', error);
-      return { success: false, error: error.message };
+      console.error('Erro no processo de login:', error);
+      return { success: false, error: 'Erro interno durante o login. Tente novamente.' };
+    }
+  }
+
+  // Verificar conectividade com a API
+  async checkAPIConnectivity() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'API-KEY': API_KEY,
+        },
+        body: JSON.stringify({
+          email: 'test@test.com',
+          password: 'test'
+        }),
+      });
+
+      // API está acessível se retornou qualquer resposta HTTP válida (mesmo que seja erro de autenticação)
+      const isConnected = response.status >= 200 && response.status < 500;
+      return isConnected;
+    } catch (error) {
+      return false;
     }
   }
 
@@ -232,11 +282,14 @@ class AuthService {
     }
   }
 
-  // Logout
+  // Logout - limpa todas as credenciais e configurações
   async logout() {
     try {
-      await AsyncStorage.removeItem(AUTH_KEY);
-      this.isAuthenticated = false;
+      // Usar clearAllData para limpar tudo
+      await this.clearAllData();
+
+      // Executar teste para verificar se tudo foi limpo corretamente
+      await this.testPostLogoutState();
     } catch (error) {
       console.error('Erro no logout:', error);
       throw error;
@@ -246,8 +299,6 @@ class AuthService {
   // Remove todas as credenciais (reset completo)
   async clearAllData() {
     try {
-      console.log('Limpando todas as credenciais armazenadas...');
-
       // Remover dados do AsyncStorage
       await AsyncStorage.multiRemove([AUTH_KEY, BIOMETRIC_ENABLED_KEY]);
 
@@ -255,17 +306,36 @@ class AuthService {
       try {
         await SecureStore.deleteItemAsync(USER_CREDENTIALS_KEY);
       } catch (secureError) {
-        // Se não conseguir deletar do SecureStore, não é um erro crítico
-        console.log('SecureStore item não existia ou já foi removido');
+        // SecureStore item não existia ou já foi removido
       }
 
       // Reset estado interno
       this.isAuthenticated = false;
-
-      console.log('Todas as credenciais foram limpas com sucesso');
     } catch (error) {
       console.error('Erro ao limpar dados:', error);
       throw error;
+    }
+  }
+
+  // Função de teste para verificar estado pós-logout
+  async testPostLogoutState() {
+    try {
+      const authKey = await AsyncStorage.getItem(AUTH_KEY);
+      const biometricEnabled = await AsyncStorage.getItem(BIOMETRIC_ENABLED_KEY);
+      const storedCredentials = await this.getStoredCredentials();
+
+      const shouldShowLogin = !authKey && !storedCredentials && !biometricEnabled;
+
+      return {
+        authKey,
+        biometricEnabled,
+        hasStoredCredentials: !!storedCredentials,
+        isAuthenticated: this.isAuthenticated,
+        shouldShowLogin
+      };
+    } catch (error) {
+      console.error('Erro ao testar estado pós-logout:', error);
+      return null;
     }
   }
 }
