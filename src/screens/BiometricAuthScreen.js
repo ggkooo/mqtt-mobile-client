@@ -21,10 +21,10 @@ const BiometricAuthScreen = ({ navigation }) => {
 
   useEffect(() => {
     loadBiometricTypes();
-    // Reativado: chamada automática da biometria para melhor UX
+    // Reactivated: automatic biometric call for better UX
     setTimeout(() => {
       handleBiometricAuth();
-    }, 800); // Pequeno delay para garantir que a tela foi carregada
+    }, 800); // Small delay to ensure screen was loaded
   }, []);
 
   const loadBiometricTypes = async () => {
@@ -32,7 +32,7 @@ const BiometricAuthScreen = ({ navigation }) => {
       const types = await AuthService.getAvailableAuthenticationTypes();
       setBiometricTypes(types);
     } catch (error) {
-      // Falha silenciosa - não é crítico para o funcionamento
+      // Silent failure - not critical for functionality
     }
   };
 
@@ -44,33 +44,33 @@ const BiometricAuthScreen = ({ navigation }) => {
       if (result.success) {
         login();
       } else {
-        // Verificar se é cancelamento do sistema ou usuário
+        // Check if it's system or user cancellation
         if (result.error && (
           result.error.includes('system_cancel') ||
           result.error.includes('user_cancel') ||
           result.error.includes('cancelada') ||
           result.error.includes('cancelled')
         )) {
-          // Não faz nada - deixa o usuário tentar novamente manualmente
+          // Do nothing - let user try again manually
           return;
         }
 
-        // Para outros tipos de erro, incrementa contador e trata
+        // For other types of errors, increment counter and handle
         setRetryCount(prev => prev + 1);
         if (retryCount >= 2) {
-          // Após 3 tentativas, oferecer login com senha
+          // After 3 attempts, offer password login
           Alert.alert(
-            'Erro de Autenticação',
-            'Deseja tentar novamente?',
+            'Authentication Error',
+            'Would you like to try again?',
             [
-              { text: 'Sim', onPress: () => setRetryCount(0) },
-              { text: 'Cancelar', onPress: handleLoginWithPassword }
+              { text: 'Yes', onPress: () => setRetryCount(0) },
+              { text: 'Cancel', onPress: handleLoginWithPassword }
             ]
           );
         }
       }
     } catch (error) {
-      Alert.alert('Erro', 'Tente novamente');
+      Alert.alert('Error', 'Try again');
     } finally {
       setLoading(false);
     }
@@ -134,7 +134,7 @@ const BiometricAuthScreen = ({ navigation }) => {
             style={styles.primaryButton}
             labelStyle={styles.primaryButtonText}
           >
-            Autenticar
+            Authenticate
           </Button>
         </View>
       </View>
