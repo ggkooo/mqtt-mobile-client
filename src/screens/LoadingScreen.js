@@ -16,7 +16,7 @@ const LoadingScreen = () => {
         />
         <Text style={styles.title}>GGKO's House</Text>
         <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
-        <Text style={styles.loadingText}>Carregando...</Text>
+        <Text style={styles.loadingText}>Loading...</Text>
       </View>
     </SafeAreaView>
   );
