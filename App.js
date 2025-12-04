@@ -81,7 +81,7 @@ const AppNavigator = () => {
               component={AddActionScreen}
               options={{
                 headerShown: true,
-                title: 'Nova Ação',
+                title: 'New Action',
                 headerStyle: {
                   backgroundColor: '#8E8E93',
                 },
@@ -96,7 +96,7 @@ const AppNavigator = () => {
               component={MQTTSettingsScreen}
               options={{
                 headerShown: true,
-                title: 'Configurações MQTT',
+                title: 'MQTT Settings',
                 headerStyle: {
                   backgroundColor: '#8E8E93',
                 },
